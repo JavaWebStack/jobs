@@ -2,6 +2,7 @@ package org.javawebstack.jobs.serialization;
 
 import org.javawebstack.abstractdata.AbstractElement;
 import org.javawebstack.abstractdata.mapper.Mapper;
+import org.javawebstack.abstractdata.mapper.naming.NamingPolicy;
 import org.javawebstack.jobs.Job;
 
 public class JsonJobSerializer implements JobSerializer {
@@ -9,7 +10,7 @@ public class JsonJobSerializer implements JobSerializer {
     private final Mapper mapper;
 
     public JsonJobSerializer() {
-        this(new Mapper());
+        this(new Mapper().namingPolicy(NamingPolicy.SNAKE_CASE));
     }
 
     public JsonJobSerializer(Mapper mapper) {
