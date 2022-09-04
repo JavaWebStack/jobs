@@ -8,12 +8,13 @@ import java.util.UUID;
 
 @Getter
 @Setter
-public class JobLogData {
+public class JobWorkerInfo {
 
     UUID id;
-    UUID eventId;
-    String level;
-    Date timestamp;
-    String message;
+    String queue;
+    String hostname;
+    boolean online;
+    Date lastHeartbeatAt;
+    Date createdAt;
 
 }

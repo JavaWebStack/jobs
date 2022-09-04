@@ -2,15 +2,18 @@ package org.javawebstack.jobs.storage.model;
 
 import lombok.Getter;
 import lombok.Setter;
+import org.javawebstack.jobs.JobStatus;
 
+import java.util.Date;
 import java.util.UUID;
 
 @Getter
 @Setter
-public class JobData {
+public class JobInfo {
 
     UUID id;
+    JobStatus status;
     String type;
-    String data;
+    Date createdAt;
 
 }

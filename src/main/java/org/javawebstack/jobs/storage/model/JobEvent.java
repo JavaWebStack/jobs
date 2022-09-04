@@ -8,12 +8,12 @@ import java.util.UUID;
 
 @Getter
 @Setter
-public class JobEventData {
+public class JobEvent {
 
     UUID id;
     UUID jobId;
     Type type;
-    Date timestamp;
+    Date createdAt;
 
     public enum Type {
         ENQUEUED,
