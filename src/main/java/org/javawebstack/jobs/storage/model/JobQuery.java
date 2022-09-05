@@ -8,9 +8,14 @@ import org.javawebstack.jobs.JobStatus;
 @Getter
 public class JobQuery {
 
-    JobStatus status;
+    JobStatus[] status;
     String type;
     int limit = -1;
     int offset = 0;
+
+    public JobQuery setStatus(JobStatus... status) {
+        this.status = status.length == 0 ? null : status;
+        return this;
+    }
 
 }

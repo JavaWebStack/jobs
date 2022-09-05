@@ -12,6 +12,7 @@ import java.sql.SQLException;
 import java.time.Instant;
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public class SQLJobStorage implements JobStorage {
 
@@ -95,8 +96,14 @@ public class SQLJobStorage implements JobStorage {
                 sb.append("WHERE ");
             else
                 sb.append(" AND ");
-            sb.append("`status`=?");
-            params.add(query.getStatus());
+            if(query.getStatus().length == 1) {
+                sb.append("`status`=?");
+                params.add(query.getStatus());
+            } else {
+                sb.append("`status` IN (").append(Stream.of(query.getStatus()).map(s -> "?").collect(Collectors.joining(","))).append(")");
+                params.addAll(Arrays.asList(query.getStatus()));
+            }
+
         }
         if(query.getLimit() != -1 || query.getOffset() != -1) {
             int offset = query.getOffset();
