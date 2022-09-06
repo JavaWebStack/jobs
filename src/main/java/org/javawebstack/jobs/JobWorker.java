@@ -9,10 +9,13 @@ import org.javawebstack.jobs.storage.model.JobEvent;
 import org.javawebstack.jobs.storage.model.JobInfo;
 import org.javawebstack.jobs.storage.model.JobLogEntry;
 import org.javawebstack.jobs.storage.model.JobWorkerInfo;
+import org.javawebstack.jobs.util.JobExitException;
 import org.javawebstack.jobs.util.SyncTimer;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.time.Instant;
+import java.util.Date;
 import java.util.UUID;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadPoolExecutor;
@@ -81,8 +84,10 @@ public class JobWorker {
                     // Failed to get job
                 }
             }, 0, pollInterval);
+            SyncTimer processSchedule = new SyncTimer(scheduler::processSchedule, 0, pollInterval);
             while (!stopRequested) {
                 boolean ticked = heartbeat.tick();
+                ticked = ticked || processSchedule.tick();
                 ticked = ticked || poll.tick();
                 if(!ticked) {
                     try {
@@ -142,6 +147,34 @@ public class JobWorker {
                 storage.createEvent(event);
                 storage.setJobStatus(id, JobStatus.SUCCESS);
             } catch (Throwable t) {
+                if(t instanceof JobExitException) {
+                    JobExitException jee = (JobExitException) t;
+                    if(jee.getRetry() == -1 || !jee.isSuccess()) {
+                        event = new JobEvent()
+                                .setJobId(id)
+                                .setType(jee.isSuccess() ? JobEvent.Type.SUCCESS : JobEvent.Type.FAILED);
+                        storage.createEvent(event);
+                        if(jee.getMessage() != null) {
+                            storage.createLogEntry(new JobLogEntry()
+                                    .setEventId(event.getId())
+                                    .setLevel(jee.isSuccess() ? LogLevel.INFO : LogLevel.ERROR)
+                                    .setMessage(jee.getMessage())
+                            );
+                        }
+                    }
+                    if(jee.getRetry() != -1) {
+                        if(jee.getRetry() > 0) {
+                            jobs.getScheduler().schedule(queue, Date.from(Instant.now().plusSeconds(jee.getRetry())), info.getId());
+                            storage.setJobStatus(id, JobStatus.SCHEDULED);
+                        } else {
+                            jobs.getScheduler().enqueue(queue, info.getId());
+                            storage.setJobStatus(id, JobStatus.ENQUEUED);
+                        }
+                    } else {
+                        storage.setJobStatus(id, jee.isSuccess() ? JobStatus.SUCCESS : JobStatus.FAILED);
+                    }
+                    return;
+                }
                 StringWriter sw = new StringWriter();
                 t.printStackTrace(new PrintWriter(sw));
                 event = new JobEvent()

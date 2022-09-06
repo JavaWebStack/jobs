@@ -17,4 +17,13 @@ public class JobLogEntry {
     String message;
     Date createdAt;
 
+    public JobLogEntry clone() {
+        return new JobLogEntry()
+                .setId(id)
+                .setEventId(eventId)
+                .setLevel(level)
+                .setMessage(message)
+                .setCreatedAt(createdAt);
+    }
+
 }

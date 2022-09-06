@@ -61,4 +61,8 @@ public class SQLJobScheduler implements JobScheduler {
         return null;
     }
 
+    public void processSchedule() {
+        // TODO
+    }
+
 }

@@ -16,4 +16,12 @@ public class JobInfo {
     String type;
     Date createdAt;
 
+    public JobInfo clone() {
+        return new JobInfo()
+                .setId(id)
+                .setStatus(status)
+                .setType(type)
+                .setCreatedAt(createdAt);
+    }
+
 }

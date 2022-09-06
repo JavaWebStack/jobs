@@ -3,6 +3,7 @@ package org.javawebstack.jobs;
 import org.javawebstack.jobs.storage.model.JobEvent;
 import org.javawebstack.jobs.storage.model.JobInfo;
 import org.javawebstack.jobs.storage.model.JobLogEntry;
+import org.javawebstack.jobs.util.JobExitException;
 
 import java.util.Date;
 import java.util.UUID;
@@ -41,6 +42,26 @@ public class JobContext {
 
     public void error(String message) {
         jobs.getStorage().createLogEntry(new JobLogEntry().setLevel(LogLevel.ERROR).setEventId(event.getId()).setMessage(message));
+    }
+
+    public void fail(String message) {
+        throw new JobExitException(false, message, -1);
+    }
+
+    public void retry(String message, int retryInSeconds) {
+        throw new JobExitException(false, message, retryInSeconds);
+    }
+
+    public void requeue(int requeueInSeconds) {
+        throw new JobExitException(true, null, requeueInSeconds);
+    }
+
+    public void complete() {
+        complete(null);
+    }
+
+    public void complete(String message) {
+        throw new JobExitException(true, message, -1);
     }
 
 }

@@ -15,6 +15,14 @@ public class JobEvent {
     Type type;
     Date createdAt;
 
+    public JobEvent clone() {
+        return new JobEvent()
+                .setId(id)
+                .setJobId(jobId)
+                .setType(type)
+                .setCreatedAt(createdAt);
+    }
+
     public enum Type {
         ENQUEUED,
         EXECUTION,
