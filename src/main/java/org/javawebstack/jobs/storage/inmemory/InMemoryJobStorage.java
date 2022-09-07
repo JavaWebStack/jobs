@@ -19,12 +19,8 @@ public class InMemoryJobStorage implements JobStorage {
     List<JobWorkerInfo> workers = new ArrayList<>();
 
     public void createJob(JobInfo info, String payload) {
-        if(info.getId() == null)
-            info.setId(UUID.randomUUID());
-        if(info.getCreatedAt() == null)
-            info.setCreatedAt(Date.from(Instant.now()));
-        if(info.getStatus() == null)
-            info.setStatus(JobStatus.CREATED);
+        info.checkRequired();
+        info.sanitize();
         jobs.add(info.clone());
         jobPayloads.put(info.getId(), payload);
     }
@@ -68,30 +64,37 @@ public class InMemoryJobStorage implements JobStorage {
     }
 
     public void createEvent(JobEvent data) {
-        if(data.getId() == null)
-            data.setId(UUID.randomUUID());
-        if(data.getCreatedAt() == null)
-            data.setCreatedAt(Date.from(Instant.now()));
+        data.checkRequired();
+        data.sanitize();
         events.add(data.clone());
     }
 
+    public JobEvent getEvent(UUID id) {
+        return events.stream().filter(j -> j.getId().equals(id)).findFirst().map(JobEvent::clone).orElse(null);
+    }
+
     public void createLogEntry(JobLogEntry entry) {
-        if(entry.getId() == null)
-            entry.setId(UUID.randomUUID());
-        if(entry.getCreatedAt() == null)
-            entry.setCreatedAt(Date.from(Instant.now()));
+        entry.checkRequired();
+        entry.sanitize();
         List<JobLogEntry> entries = logEntries.computeIfAbsent(entry.getEventId(), k -> new ArrayList<>());
         entries.add(entry.clone());
     }
 
+    public JobLogEntry getLogEntry(UUID eventId, UUID id) {
+        List<JobLogEntry> entries = logEntries.get(eventId);
+        if(entries == null)
+            return null;
+        return entries.stream().filter(j -> j.getId().equals(id)).findFirst().map(JobLogEntry::clone).orElse(null);
+    }
+
     public void createWorker(JobWorkerInfo info) {
-        if(info.getId() == null)
-            info.setId(UUID.randomUUID());
-        if(info.getCreatedAt() == null)
-            info.setCreatedAt(Date.from(Instant.now()));
-        if(info.getLastHeartbeatAt() == null)
-            info.setLastHeartbeatAt(Date.from(Instant.now()));
+        info.checkRequired();
+        info.sanitize();
         workers.add(info.clone());
+    }
+
+    public JobWorkerInfo getWorker(UUID id) {
+        return workers.stream().filter(j -> j.getId().equals(id)).findFirst().map(JobWorkerInfo::clone).orElse(null);
     }
 
     public void setWorkerOnline(UUID id, boolean online) {

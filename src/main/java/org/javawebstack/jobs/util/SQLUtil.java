@@ -5,6 +5,7 @@ import org.javawebstack.orm.wrapper.SQL;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Timestamp;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -16,7 +17,7 @@ public class SQLUtil {
         for(int i=0; i<valueArray.length; i++)
             valueArray[i] = transformValue(values.get(keys.get(i)));
         try {
-            return sql.write("INSERT INTO `" + table + "` (" + keys.stream().map(k -> "`" + k + "`").collect(Collectors.joining(",")) + ") VALUES (" + keys.stream().map(k -> "?").collect(Collectors.joining(",")) + ");", valueArray);
+            return sql.write("INSERT INTO `" + table + "` (" + keys.stream().map(k -> "`" + k + "`").collect(Collectors.joining(",")) + ") VALUES (" + keys.stream().map(k -> "?").collect(Collectors.joining(",")) + ");", transformParams(valueArray));
         } catch (SQLException e) {
             throw new RuntimeException(e);
         }
@@ -30,7 +31,7 @@ public class SQLUtil {
         for(int i=0; i<params.length; i++)
             valueArray[i + keys.size()] = transformValue(params[i]);
         try {
-            sql.write("UPDATE `" + table + "` SET " + keys.stream().map(k -> "`" + k + "`=?").collect(Collectors.joining(",")) + (((where != null) && (where.length() > 0)) ? (" WHERE " + where) : "") + ";", valueArray);
+            sql.write("UPDATE `" + table + "` SET " + keys.stream().map(k -> "`" + k + "`=?").collect(Collectors.joining(",")) + (((where != null) && (where.length() > 0)) ? (" WHERE " + where) : "") + ";", transformParams(valueArray));
         } catch (SQLException e) {
             throw new RuntimeException(e);
         }
@@ -38,7 +39,7 @@ public class SQLUtil {
 
     public static void delete(SQL sql, String table, String where, Object... params) {
         try {
-            sql.write("DELETE FROM `" + table + "`" + (((where != null) && (where.length() > 0)) ? (" WHERE " + where) : "") + ";", params);
+            sql.write("DELETE FROM `" + table + "`" + (((where != null) && (where.length() > 0)) ? (" WHERE " + where) : "") + ";", transformParams(params));
         } catch (SQLException e) {
             throw new RuntimeException(e);
         }
@@ -47,7 +48,7 @@ public class SQLUtil {
     public static List<Map<String, Object>> select(SQL sql, String table, String columns, String query, Object... params) {
         ResultSet rs;
         try {
-            rs = sql.read("SELECT " + columns + " FROM `" + table + "`" + (((query != null) && (query.length() > 0)) ? (" " + query) : "") + ";", params);
+            rs = sql.read("SELECT " + columns + " FROM `" + table + "`" + (((query != null) && (query.length() > 0)) ? (" " + query) : "") + ";", transformParams(params));
         } catch (SQLException e) {
             throw new RuntimeException(e);
         }
@@ -72,11 +73,22 @@ public class SQLUtil {
         }
     }
 
+    private static Object[] transformParams(Object[] params) {
+        Object[] transformed = new Object[params.length];
+        for(int i=0; i<transformed.length; i++)
+            transformed[i] = transformValue(params[i]);
+        return transformed;
+    }
+
     private static Object transformValue(Object v) {
         if(v == null)
             return null;
         if(v.getClass().equals(UUID.class))
             return v.toString();
+        if(v.getClass().equals(Date.class))
+            return Timestamp.from(((Date) v).toInstant());
+        if(v.getClass().equals(Boolean.class))
+            return ((Boolean) v) ? 1 : 0;
         if(v.getClass().isEnum())
             return ((Enum<?>) v).name();
         if(v instanceof AbstractElement)

@@ -7,18 +7,6 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    services:
-      mysql:
-        image: mariadb:latest
-        env:
-          MYSQL_ALLOW_EMPTY_PASSWORD: yes
-          MYSQL_DATABASE: test
-          MYSQL_USER: test
-          MYSQL_PASSWORD: test
-          MYSQL_RANDOM_ROOT_PASSWORD: yes
-        ports:
-          - 3306
-        options: --health-cmd="mysqladmin ping" --health-interval=5s --health-timeout=2s --health-retries=3
     steps:
       - uses: actions/checkout@v2
       - name: Set up JDK 1.8
@@ -29,10 +17,6 @@ jobs:
         run: mvn -B package -Dmaven.test.skip=true
       - name: Test
         run: mvn -B test
-        env:
-          MYSQL_PORT: ${{ job.services.mysql.ports[3306] }}
-          MYSQL_USERNAME: test
-          MYSQL_PASSWORD: test
       - name: Install GPG Key
         run: echo -e "$GPG_PRIVATE_KEY" | gpg --import --no-tty --batch --yes
         env:

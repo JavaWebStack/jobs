@@ -15,8 +15,11 @@ public interface JobStorage {
     void deleteJob(UUID id);
     List<JobInfo> queryJobs(JobQuery query);
     void createEvent(JobEvent data);
+    JobEvent getEvent(UUID id);
     void createLogEntry(JobLogEntry entry);
+    JobLogEntry getLogEntry(UUID eventId, UUID id);
     void createWorker(JobWorkerInfo info);
+    JobWorkerInfo getWorker(UUID id);
     void setWorkerOnline(UUID id, boolean online);
 
 }

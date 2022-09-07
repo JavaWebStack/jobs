@@ -3,6 +3,7 @@ package org.javawebstack.jobs.storage.model;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.time.Instant;
 import java.util.Date;
 import java.util.UUID;
 
@@ -16,6 +17,22 @@ public class JobWorkerInfo {
     boolean online;
     Date lastHeartbeatAt;
     Date createdAt;
+
+    public void checkRequired() throws IllegalArgumentException {
+        if(queue == null)
+            throw new IllegalArgumentException("Worker queue is required");
+        if(hostname == null)
+            throw new IllegalArgumentException("Worker hostname is required");
+    }
+
+    public void sanitize() {
+        if(id == null)
+            id = UUID.randomUUID();
+        if(lastHeartbeatAt == null)
+            lastHeartbeatAt = Date.from(Instant.now());
+        if(createdAt == null)
+            createdAt = Date.from(Instant.now());
+    }
 
     public JobWorkerInfo clone() {
         return new JobWorkerInfo()

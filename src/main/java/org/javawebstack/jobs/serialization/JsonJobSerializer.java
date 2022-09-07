@@ -20,7 +20,7 @@ public class JsonJobSerializer implements JobSerializer {
     public String serialize(Job job) {
         try {
             Class.forName(job.getClass().getName());
-            return mapper.map(job).object().toJsonString(true);
+            return mapper.map(job).object().toJsonString();
         } catch (ClassNotFoundException e) {
             throw new IllegalArgumentException("Job must be a proper class and cannot be a dynamic class or lambda!");
         }

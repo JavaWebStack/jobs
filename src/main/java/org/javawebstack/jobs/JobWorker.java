@@ -84,7 +84,9 @@ public class JobWorker {
                     // Failed to get job
                 }
             }, 0, pollInterval);
-            SyncTimer processSchedule = new SyncTimer(scheduler::processSchedule, 0, pollInterval);
+            SyncTimer processSchedule = new SyncTimer(() -> {
+                scheduler.processSchedule(queue).forEach(id -> storage.setJobStatus(id, JobStatus.ENQUEUED));
+            }, 0, pollInterval);
             while (!stopRequested) {
                 boolean ticked = heartbeat.tick();
                 ticked = ticked || processSchedule.tick();

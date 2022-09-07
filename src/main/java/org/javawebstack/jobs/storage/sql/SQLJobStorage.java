@@ -1,11 +1,11 @@
 package org.javawebstack.jobs.storage.sql;
 
 import org.javawebstack.jobs.JobStatus;
+import org.javawebstack.jobs.LogLevel;
 import org.javawebstack.jobs.storage.model.*;
 import org.javawebstack.jobs.storage.JobStorage;
 import org.javawebstack.jobs.util.MapBuilder;
 import org.javawebstack.jobs.util.SQLUtil;
-import org.javawebstack.orm.wrapper.MySQL;
 import org.javawebstack.orm.wrapper.SQL;
 
 import java.sql.SQLException;
@@ -19,11 +19,9 @@ public class SQLJobStorage implements JobStorage {
     final SQL sql;
     final String tablePrefix;
 
-    public SQLJobStorage(String host, int port, String database, String username, String password, String tablePrefix) {
-        this(new MySQL(host, port, database, username, password), tablePrefix);
-    }
-
     public SQLJobStorage(SQL sql, String tablePrefix) {
+        if(tablePrefix == null)
+            tablePrefix = "";
         this.sql = sql;
         this.tablePrefix = tablePrefix;
         try {
@@ -41,12 +39,8 @@ public class SQLJobStorage implements JobStorage {
     }
 
     public void createJob(JobInfo info, String payload) {
-        if(info.getId() == null)
-            info.setId(UUID.randomUUID());
-        if(info.getCreatedAt() == null)
-            info.setCreatedAt(Date.from(Instant.now()));
-        if(info.getStatus() == null)
-            info.setStatus(JobStatus.CREATED);
+        info.checkRequired();
+        info.sanitize();
         SQLUtil.insert(sql, "jobs", new MapBuilder<String, Object>()
                 .set("id", info.getId())
                 .set("status", info.getStatus())
@@ -58,14 +52,14 @@ public class SQLJobStorage implements JobStorage {
     }
 
     public JobInfo getJob(UUID id) {
-        List<Map<String, Object>> results = SQLUtil.select(sql, "jobs", "`id`,`status`,`type`,`created_at`", "WHERE `id`=? LIMIT 1", id);
+        List<Map<String, Object>> results = SQLUtil.select(sql, table("jobs"), "`id`,`status`,`type`,`created_at`", "WHERE `id`=? LIMIT 1", id);
         if(results.size() == 0)
             return null;
         return buildJobInfo(results.get(0));
     }
 
     public String getJobPayload(UUID id) {
-        List<Map<String, Object>> results = SQLUtil.select(sql, "jobs", "`payload`", "WHERE `id`=? LIMIT 1", id);
+        List<Map<String, Object>> results = SQLUtil.select(sql, table("jobs"), "`payload`", "WHERE `id`=? LIMIT 1", id);
         if(results.size() == 0)
             return null;
         return (String) results.get(0).get("payload");
@@ -79,9 +73,9 @@ public class SQLJobStorage implements JobStorage {
     }
 
     public void deleteJob(UUID id) {
-        SQLUtil.delete(sql, "job_log_entries", "EXISTS(SELECT `id` FROM `" + table("job_events") + "` WHERE `" + table("job_events") + "`.id=`" + table("job_log_entries") + "`.event_id AND `" + table("job_events") + "`.job_id=?)", id);
-        SQLUtil.delete(sql, "job_events", "`job_id`=?", id);
-        SQLUtil.delete(sql, "jobs", "`id`=?", id);
+        SQLUtil.delete(sql, table("job_log_entries"), "EXISTS(SELECT `id` FROM `" + table("job_events") + "` WHERE `" + table("job_events") + "`.id=`" + table("job_log_entries") + "`.event_id AND `" + table("job_events") + "`.job_id=?)", id);
+        SQLUtil.delete(sql, table("job_events"), "`job_id`=?", id);
+        SQLUtil.delete(sql, table("jobs"), "`id`=?", id);
     }
 
     public List<JobInfo> queryJobs(JobQuery query) {
@@ -98,12 +92,11 @@ public class SQLJobStorage implements JobStorage {
                 sb.append(" AND ");
             if(query.getStatus().length == 1) {
                 sb.append("`status`=?");
-                params.add(query.getStatus());
+                params.add(query.getStatus()[0]);
             } else {
                 sb.append("`status` IN (").append(Stream.of(query.getStatus()).map(s -> "?").collect(Collectors.joining(","))).append(")");
                 params.addAll(Arrays.asList(query.getStatus()));
             }
-
         }
         if(query.getLimit() != -1 || query.getOffset() != -1) {
             int offset = query.getOffset();
@@ -112,20 +105,18 @@ public class SQLJobStorage implements JobStorage {
             int limit = query.getLimit();
             if(limit < 0)
                 limit = Integer.MAX_VALUE;
-            sb.append(" LIMIT ").append(offset - 1).append(",").append(limit);
+            sb.append(" LIMIT ").append(offset).append(",").append(limit);
         }
-        return SQLUtil.select(sql, "jobs", "`id`,`status`,`type`,`created_at`", sb.toString().trim(), params.toArray())
+        return SQLUtil.select(sql, table("jobs"), "`id`,`status`,`type`,`created_at`", sb.toString().trim(), params.toArray())
                 .stream()
                 .map(this::buildJobInfo)
                 .collect(Collectors.toList());
     }
 
     public void createEvent(JobEvent event) {
-        if(event.getId() == null)
-            event.setId(UUID.randomUUID());
-        if(event.getCreatedAt() == null)
-            event.setCreatedAt(Date.from(Instant.now()));
-        SQLUtil.insert(sql, "job_events", new MapBuilder<String, Object>()
+        event.checkRequired();
+        event.sanitize();
+        SQLUtil.insert(sql, table("job_events"), new MapBuilder<String, Object>()
                 .set("id", event.getId())
                 .set("job_id", event.getJobId())
                 .set("type", event.getType())
@@ -134,12 +125,17 @@ public class SQLJobStorage implements JobStorage {
         );
     }
 
+    public JobEvent getEvent(UUID id) {
+        List<Map<String, Object>> results = SQLUtil.select(sql, table("job_events"), "`id`,`job_id`,`type`,`created_at`", "WHERE `id`=? LIMIT 1", id);
+        if(results.size() == 0)
+            return null;
+        return buildJobEvent(results.get(0));
+    }
+
     public void createLogEntry(JobLogEntry entry) {
-        if(entry.getId() == null)
-            entry.setId(UUID.randomUUID());
-        if(entry.getCreatedAt() == null)
-            entry.setCreatedAt(Date.from(Instant.now()));
-        SQLUtil.insert(sql, "job_log_entries", new MapBuilder<String, Object>()
+        entry.checkRequired();
+        entry.sanitize();
+        SQLUtil.insert(sql, table("job_log_entries"), new MapBuilder<String, Object>()
                 .set("id", entry.getId())
                 .set("event_id", entry.getEventId())
                 .set("level", entry.getLevel())
@@ -149,14 +145,17 @@ public class SQLJobStorage implements JobStorage {
         );
     }
 
+    public JobLogEntry getLogEntry(UUID eventId, UUID id) {
+        List<Map<String, Object>> results = SQLUtil.select(sql, table("job_log_entries"), "`id`,`event_id`,`level`,`message`,`created_at`", "WHERE `event_id`=? AND `id`=? LIMIT 1", eventId, id);
+        if(results.size() == 0)
+            return null;
+        return buildJobLogEntry(results.get(0));
+    }
+
     public void createWorker(JobWorkerInfo info) {
-        if(info.getId() == null)
-            info.setId(UUID.randomUUID());
-        if(info.getCreatedAt() == null)
-            info.setCreatedAt(Date.from(Instant.now()));
-        if(info.getLastHeartbeatAt() == null)
-            info.setLastHeartbeatAt(Date.from(Instant.now()));
-        SQLUtil.insert(sql, "job_workers", new MapBuilder<String, Object>()
+        info.checkRequired();
+        info.sanitize();
+        SQLUtil.insert(sql, table("job_workers"), new MapBuilder<String, Object>()
                 .set("id", info.getId())
                 .set("queue", info.getQueue())
                 .set("online", info.isOnline())
@@ -167,8 +166,15 @@ public class SQLJobStorage implements JobStorage {
         );
     }
 
+    public JobWorkerInfo getWorker(UUID id) {
+        List<Map<String, Object>> results = SQLUtil.select(sql, table("job_workers"), "`id`,`queue`,`hostname`,`online`,`last_heartbeat_at`,`created_at`", "WHERE `id`=? LIMIT 1", id);
+        if(results.size() == 0)
+            return null;
+        return buildJobWorkerInfo(results.get(0));
+    }
+
     public void setWorkerOnline(UUID id, boolean online) {
-        SQLUtil.update(sql, "job_workers", new MapBuilder<String, Object>()
+        SQLUtil.update(sql, table("job_workers"), new MapBuilder<String, Object>()
                 .set("online", online)
                 .set("last_heartbeat_at", Date.from(Instant.now()))
                 .build()
@@ -180,6 +186,36 @@ public class SQLJobStorage implements JobStorage {
                 .setId(UUID.fromString((String) values.get("id")))
                 .setStatus(JobStatus.valueOf((String) values.get("status")))
                 .setType((String) values.get("type"))
+                .setCreatedAt((Date) values.get("created_at"));
+        return info;
+    }
+
+    private JobEvent buildJobEvent(Map<String, Object> values) {
+        JobEvent event = new JobEvent()
+                .setId(UUID.fromString((String) values.get("id")))
+                .setJobId(UUID.fromString((String) values.get("job_id")))
+                .setType(JobEvent.Type.valueOf((String) values.get("type")))
+                .setCreatedAt((Date) values.get("created_at"));
+        return event;
+    }
+
+    private JobLogEntry buildJobLogEntry(Map<String, Object> values) {
+        JobLogEntry entry = new JobLogEntry()
+                .setId(UUID.fromString((String) values.get("id")))
+                .setEventId(UUID.fromString((String) values.get("event_id")))
+                .setLevel(LogLevel.valueOf((String) values.get("level")))
+                .setMessage((String) values.get("message"))
+                .setCreatedAt((Date) values.get("created_at"));
+        return entry;
+    }
+
+    private JobWorkerInfo buildJobWorkerInfo(Map<String, Object> values) {
+        JobWorkerInfo info = new JobWorkerInfo()
+                .setId(UUID.fromString((String) values.get("id")))
+                .setQueue((String) values.get("queue"))
+                .setHostname((String) values.get("hostname"))
+                .setOnline((Boolean) values.get("online"))
+                .setLastHeartbeatAt((Date) values.get("last_heartbeat_at"))
                 .setCreatedAt((Date) values.get("created_at"));
         return info;
     }

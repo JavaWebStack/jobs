@@ -4,6 +4,7 @@ import lombok.Getter;
 import lombok.Setter;
 import org.javawebstack.jobs.JobStatus;
 
+import java.time.Instant;
 import java.util.Date;
 import java.util.UUID;
 
@@ -22,6 +23,20 @@ public class JobInfo {
                 .setStatus(status)
                 .setType(type)
                 .setCreatedAt(createdAt);
+    }
+
+    public void checkRequired() throws IllegalArgumentException {
+        if(type == null)
+            throw new IllegalArgumentException("Job type is required");
+    }
+
+    public void sanitize() {
+        if(id == null)
+            id = UUID.randomUUID();
+        if(status == null)
+            status = JobStatus.CREATED;
+        if(createdAt == null)
+            createdAt = Date.from(Instant.now());
     }
 
 }
