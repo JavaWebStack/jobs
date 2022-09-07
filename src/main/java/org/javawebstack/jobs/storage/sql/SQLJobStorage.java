@@ -173,6 +173,10 @@ public class SQLJobStorage implements JobStorage {
         return buildJobWorkerInfo(results.get(0));
     }
 
+    public List<JobWorkerInfo> queryWorkers() {
+        return SQLUtil.select(sql, table("job_workers"), "`id`,`queue`,`hostname`,`online`,`last_heartbeat_at`,`created_at`", null).stream().map(this::buildJobWorkerInfo).collect(Collectors.toList());
+    }
+
     public void setWorkerOnline(UUID id, boolean online) {
         SQLUtil.update(sql, table("job_workers"), new MapBuilder<String, Object>()
                 .set("online", online)

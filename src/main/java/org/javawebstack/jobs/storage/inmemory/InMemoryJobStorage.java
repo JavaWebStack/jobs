@@ -97,6 +97,10 @@ public class InMemoryJobStorage implements JobStorage {
         return workers.stream().filter(j -> j.getId().equals(id)).findFirst().map(JobWorkerInfo::clone).orElse(null);
     }
 
+    public List<JobWorkerInfo> queryWorkers() {
+        return workers.stream().map(JobWorkerInfo::clone).collect(Collectors.toList());
+    }
+
     public void setWorkerOnline(UUID id, boolean online) {
         JobWorkerInfo info = workers.stream().filter(j -> j.getId().equals(id)).findFirst().orElse(null);
         if(info == null)
