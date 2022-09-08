@@ -1,14 +1,18 @@
 package org.javawebstack.jobs.api.response;
 
 import lombok.AllArgsConstructor;
+import lombok.Getter;
 
 import java.util.ArrayList;
 import java.util.List;
 
 public class Response {
 
+    @Getter
     transient int status;
+    @Getter
     boolean success;
+    @Getter
     Object data;
     Pagination pagination;
     List<String> errors;

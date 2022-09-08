@@ -26,9 +26,9 @@ public class SQLJobStorage implements JobStorage {
         this.tablePrefix = tablePrefix;
         try {
             sql.write("CREATE TABLE IF NOT EXISTS `" + table("jobs") + "` (`id` VARCHAR(36), `status` ENUM('CREATED', 'SCHEDULED', 'ENQUEUED', 'PROCESSING', 'SUCCESS', 'FAILED'), `type` VARCHAR(100) NOT NULL, `payload` LONGTEXT NOT NULL, `created_at` TIMESTAMP NOT NULL, PRIMARY KEY(`id`));");
-            sql.write("CREATE TABLE IF NOT EXISTS `" + table("job_events") + "` (`id` VARCHAR(36), `job_id` VARCHAR(36) NOT NULL, `type` ENUM('ENQUEUED','EXECUTION','FAILED','SUCCESS') NOT NULL, `created_at` TIMESTAMP NOT NULL, PRIMARY KEY(`id`));");
+            sql.write("CREATE TABLE IF NOT EXISTS `" + table("job_events") + "` (`id` VARCHAR(36), `job_id` VARCHAR(36) NOT NULL, `type` ENUM('SCHEDULED','ENQUEUED','PROCESSING','FAILED','SUCCESS') NOT NULL, `created_at` TIMESTAMP NOT NULL, PRIMARY KEY(`id`));");
             sql.write("CREATE TABLE IF NOT EXISTS `" + table("job_log_entries") + "` (`id` VARCHAR(36), `event_id` VARCHAR(36) NOT NULL,`level` ENUM('INFO','WARNING','ERROR') NOT NULL, `message` LONGTEXT NOT NULL, `created_at` TIMESTAMP NOT NULL, PRIMARY KEY(`id`));");
-            sql.write("CREATE TABLE IF NOT EXISTS `" + table("job_workers") + "` (`id` VARCHAR(36), `queue` VARCHAR(50) NOT NULL, `hostname` VARCHAR(50) NOT NULL, `online` TINYINT(1), `last_heartbeat_at` TIMESTAMP NOT NULL, `created_at` TIMESTAMP NOT NULL, PRIMARY KEY(`id`));");
+            sql.write("CREATE TABLE IF NOT EXISTS `" + table("job_workers") + "` (`id` VARCHAR(36), `queue` VARCHAR(50) NOT NULL, `hostname` VARCHAR(50) NOT NULL, `threads` INT(11) NOT NULL, `online` TINYINT(1), `last_heartbeat_at` TIMESTAMP NOT NULL, `created_at` TIMESTAMP NOT NULL, PRIMARY KEY(`id`));");
         } catch (SQLException e) {
             throw new RuntimeException(e);
         }
@@ -113,6 +113,15 @@ public class SQLJobStorage implements JobStorage {
                 .collect(Collectors.toList());
     }
 
+    public Map<JobStatus, Integer> getJobCountsByStatuses() {
+        Map<JobStatus, Integer> counts = new HashMap<>();
+        List<Map<String, Object>> results = SQLUtil.select(sql, table("jobs"), "`status`,COUNT(`status`) AS `count`", null);
+        for(JobStatus status : JobStatus.values()) {
+            counts.put(status, results.stream().filter(r -> r.get("status").equals(status.name())).map(r -> ((Long) r.get("count")).intValue()).findFirst().orElse(0));
+        }
+        return counts;
+    }
+
     public void createEvent(JobEvent event) {
         event.checkRequired();
         event.sanitize();
@@ -130,6 +139,10 @@ public class SQLJobStorage implements JobStorage {
         if(results.size() == 0)
             return null;
         return buildJobEvent(results.get(0));
+    }
+
+    public List<JobEvent> queryEvents(UUID jobId) {
+        return SQLUtil.select(sql, table("job_events"), "`id`,`job_id`,`type`,`created_at`", "WHERE `job_id`=?", jobId).stream().map(this::buildJobEvent).collect(Collectors.toList());
     }
 
     public void createLogEntry(JobLogEntry entry) {
@@ -152,12 +165,17 @@ public class SQLJobStorage implements JobStorage {
         return buildJobLogEntry(results.get(0));
     }
 
+    public List<JobLogEntry> queryLogEntries(UUID eventId) {
+        return SQLUtil.select(sql, table("job_log_entries"), "`id`,`event_id`,`level`,`message`,`created_at`", "WHERE `event_id`=?", eventId).stream().map(this::buildJobLogEntry).collect(Collectors.toList());
+    }
+
     public void createWorker(JobWorkerInfo info) {
         info.checkRequired();
         info.sanitize();
         SQLUtil.insert(sql, table("job_workers"), new MapBuilder<String, Object>()
                 .set("id", info.getId())
                 .set("queue", info.getQueue())
+                .set("threads", info.getThreads())
                 .set("online", info.isOnline())
                 .set("hostname", info.getHostname())
                 .set("last_heartbeat_at", info.getLastHeartbeatAt())
@@ -167,14 +185,14 @@ public class SQLJobStorage implements JobStorage {
     }
 
     public JobWorkerInfo getWorker(UUID id) {
-        List<Map<String, Object>> results = SQLUtil.select(sql, table("job_workers"), "`id`,`queue`,`hostname`,`online`,`last_heartbeat_at`,`created_at`", "WHERE `id`=? LIMIT 1", id);
+        List<Map<String, Object>> results = SQLUtil.select(sql, table("job_workers"), "`id`,`queue`,`hostname`,`threads`,`online`,`last_heartbeat_at`,`created_at`", "WHERE `id`=? LIMIT 1", id);
         if(results.size() == 0)
             return null;
         return buildJobWorkerInfo(results.get(0));
     }
 
     public List<JobWorkerInfo> queryWorkers() {
-        return SQLUtil.select(sql, table("job_workers"), "`id`,`queue`,`hostname`,`online`,`last_heartbeat_at`,`created_at`", null).stream().map(this::buildJobWorkerInfo).collect(Collectors.toList());
+        return SQLUtil.select(sql, table("job_workers"), "`id`,`queue`,`hostname`,`threads`,`online`,`last_heartbeat_at`,`created_at`", null).stream().map(this::buildJobWorkerInfo).collect(Collectors.toList());
     }
 
     public void setWorkerOnline(UUID id, boolean online) {
@@ -218,6 +236,7 @@ public class SQLJobStorage implements JobStorage {
                 .setId(UUID.fromString((String) values.get("id")))
                 .setQueue((String) values.get("queue"))
                 .setHostname((String) values.get("hostname"))
+                .setThreads((Integer) values.get("threads"))
                 .setOnline((Boolean) values.get("online"))
                 .setLastHeartbeatAt((Date) values.get("last_heartbeat_at"))
                 .setCreatedAt((Date) values.get("created_at"));

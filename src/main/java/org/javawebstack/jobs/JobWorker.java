@@ -9,6 +9,7 @@ import org.javawebstack.jobs.storage.model.JobEvent;
 import org.javawebstack.jobs.storage.model.JobInfo;
 import org.javawebstack.jobs.storage.model.JobLogEntry;
 import org.javawebstack.jobs.storage.model.JobWorkerInfo;
+import org.javawebstack.jobs.util.HostnameUtil;
 import org.javawebstack.jobs.util.JobExitException;
 import org.javawebstack.jobs.util.SyncTimer;
 
@@ -41,7 +42,11 @@ public class JobWorker {
         this.workerThreads = workerThreads;
         workerInfo = new JobWorkerInfo()
                 .setOnline(true)
-                .setHostname("todo");
+                .setQueue(queue)
+                .setThreads(workerThreads)
+                .setHostname(HostnameUtil.getHostname());
+        if(workerInfo.getHostname() == null)
+            workerInfo.setHostname("unknown");
         jobs.getStorage().createWorker(workerInfo);
         start();
     }
@@ -85,7 +90,10 @@ public class JobWorker {
                 }
             }, 0, pollInterval);
             SyncTimer processSchedule = new SyncTimer(() -> {
-                scheduler.processSchedule(queue).forEach(id -> storage.setJobStatus(id, JobStatus.ENQUEUED));
+                scheduler.processSchedule(queue).forEach(id -> {
+                    JobEvent.createEnqueued(storage, id, queue);
+                    storage.setJobStatus(id, JobStatus.ENQUEUED);
+                });
             }, 0, pollInterval);
             while (!stopRequested) {
                 boolean ticked = heartbeat.tick();
@@ -116,7 +124,7 @@ public class JobWorker {
             storage.setJobStatus(id, JobStatus.PROCESSING);
             JobEvent event = new JobEvent()
                     .setJobId(id)
-                    .setType(JobEvent.Type.EXECUTION);
+                    .setType(JobEvent.Type.PROCESSING);
             storage.createEvent(event);
             storage.createLogEntry(new JobLogEntry()
                     .setEventId(event.getId())
@@ -166,10 +174,13 @@ public class JobWorker {
                     }
                     if(jee.getRetry() != -1) {
                         if(jee.getRetry() > 0) {
-                            jobs.getScheduler().schedule(queue, Date.from(Instant.now().plusSeconds(jee.getRetry())), info.getId());
+                            Date nextTry = Date.from(Instant.now().plusSeconds(jee.getRetry()));
+                            jobs.getScheduler().schedule(queue, nextTry, info.getId());
+                            JobEvent.createScheduled(storage, info.getId(), nextTry, queue);
                             storage.setJobStatus(id, JobStatus.SCHEDULED);
                         } else {
                             jobs.getScheduler().enqueue(queue, info.getId());
+                            JobEvent.createEnqueued(storage, info.getId(), queue);
                             storage.setJobStatus(id, JobStatus.ENQUEUED);
                         }
                     } else {

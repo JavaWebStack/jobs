@@ -3,7 +3,9 @@
     <h2>Jobs</h2>
     <bs-tab :tabs="Object.keys(statuses).map(k => ({ key: k, text: statuses[k] }))" v-model="tab">
       <template v-slot:[`item`]="{ item }">
-        {{ item.text }} <span class="badge rounded-pill text-bg-primary">{{ item.key === tab ? jobs.length : 0 }}</span>
+        <i class="bi" :class="{ ['bi-' + jobIcons[item.key]]: true }" style="margin-right: 10px;"></i>
+        {{ item.text }}
+        <span class="badge rounded-pill" :class="{ [item.key === tab ? 'text-bg-primary' : 'text-bg-dark']: true }" style="margin-left: 10px;">{{ jobCounts[item.key] }}</span>
       </template>
     </bs-tab>
     <div v-for="status in Object.keys(statuses)" :key="status" :style="{ display: status === tab ? 'block' : 'none' }">
@@ -20,10 +22,12 @@
           <input type="checkbox" class="form-check" v-model="checked[item.id]" @input="e => toggleChecked(item.id, e.target.checked)">
         </template>
         <template v-slot:[`item.id`]="{ item }">
-          <router-link :to="{ name: 'jobs' }">{{ item.id }}</router-link>
+          <router-link :to="{ name: 'job', params: { id: item.id } }">{{ item.id }}</router-link>
         </template>
       </bs-table>
     </div>
+    <job-creator ref="jobCreator" @created="this.fetchJobCounts()" />
+    <button class="btn btn-primary" @click="$refs.jobCreator.show()">Create Job</button>
   </div>
 </template>
 
@@ -31,6 +35,7 @@
 import BsTable from "@/components/BSTable";
 import api from "@/api";
 import BsTab from "@/components/BSTab";
+import JobCreator from "@/components/JobCreator";
 
 export default {
   name: "Jobs",
@@ -45,12 +50,32 @@ export default {
       },
       tab: 'SCHEDULED',
       jobs: [],
+      jobCounts: {
+        SCHEDULED: 0,
+        ENQUEUED: 0,
+        PROCESSING: 0,
+        SUCCESS: 0,
+        FAILED: 0
+      },
+      jobIcons: {
+        SCHEDULED: 'clock',
+        ENQUEUED: 'hourglass',
+        PROCESSING: 'gear',
+        SUCCESS: 'check-circle',
+        FAILED: 'exclamation-circle'
+      },
       checkAll: false,
-      checked: {}
+      checked: {},
+      countTimer: undefined
     }
   },
   created() {
     this.fetchJobs()
+    this.fetchJobCounts()
+    this.countTimer = setInterval(this.fetchJobCounts, 3000)
+  },
+  beforeUnmount() {
+    clearInterval(this.countTimer)
   },
   watch: {
     tab() {
@@ -58,11 +83,31 @@ export default {
     }
   },
   methods: {
+    spawnJob(queue, schedule_at, type, payload) {
+      api.post('/jobs', {
+        queue,
+        schedule_at: schedule_at || undefined,
+        type,
+        payload
+      }).then(() => {
+        this.fetchJobs()
+        this.fetchJobCounts()
+      })
+    },
     fetchJobs() {
+      this.jobs = []
       api.get('/jobs', { params: { status: this.tab } }).then(res => {
         this.checkAll = false
         this.checked = {}
         this.jobs = res.data.data
+      })
+    },
+    fetchJobCounts() {
+      api.get('/status/job-counts').then(res => {
+        if(this.jobCounts[this.tab] !== res.data.data[this.tab]) {
+          this.fetchJobs();
+        }
+        this.jobCounts = res.data.data
       })
     },
     toggleChecked(id, value) {
@@ -79,7 +124,7 @@ export default {
       }
     }
   },
-  components: {BsTab, BsTable}
+  components: {JobCreator, BsTab, BsTable}
 }
 </script>
 

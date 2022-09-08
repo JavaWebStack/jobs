@@ -11,6 +11,7 @@ import org.junit.jupiter.api.TestInstance;
 
 import java.util.Date;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -120,6 +121,13 @@ public abstract class JobStorageTest {
         List<JobInfo> filteredJobs = storage.queryJobs(new JobQuery().setOffset(1).setLimit(3));
         assertTrue(expectedFirstFiltered.getId().equals(filteredJobs.get(0).getId()));
         assertTrue(filteredJobs.size() == 3);
+    }
+
+    @Test
+    public void testGettingJobCountsByStatuses() {
+        Map<JobStatus, Integer> counts = storage.getJobCountsByStatuses();
+        for(JobStatus status : JobStatus.values())
+            assertNotNull(counts.get(status));
     }
 
     @Test

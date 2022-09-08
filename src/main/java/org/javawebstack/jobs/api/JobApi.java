@@ -2,12 +2,15 @@ package org.javawebstack.jobs.api;
 
 import lombok.Getter;
 import org.javawebstack.httpserver.HTTPServer;
+import org.javawebstack.httpserver.helper.HttpMethod;
 import org.javawebstack.httpserver.transformer.response.JsonResponseTransformer;
 import org.javawebstack.jobs.Jobs;
 import org.javawebstack.jobs.api.auth.AuthProvider;
 import org.javawebstack.jobs.api.controller.JobController;
+import org.javawebstack.jobs.api.controller.StatusController;
 import org.javawebstack.jobs.api.controller.WorkerController;
 import org.javawebstack.jobs.api.middleware.AuthMiddleware;
+import org.javawebstack.jobs.api.middleware.ResponseMiddleware;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -49,6 +52,11 @@ public class JobApi {
         server.beforeInterceptor(ex -> {
             ex.header("Access-Control-Allow-Origin", "*");
             ex.header("Access-Control-Allow-Methods", "*");
+            ex.header("Access-Control-Allow-Headers", "*");
+            if(ex.getMethod() == HttpMethod.OPTIONS) {
+                ex.close();
+                return true;
+            }
             return false;
         });
         return server;
@@ -61,7 +69,9 @@ public class JobApi {
             throw new IllegalArgumentException("Prefix can not be set when the dashboard is enabled!");
         server
                 .controller(prefix, new JobController(jobs))
+                .controller(prefix, new StatusController(jobs))
                 .controller(prefix, new WorkerController(jobs))
+                .afterAny(prefix + "{*:path}", new ResponseMiddleware())
                 .middleware("jobs_auth", new AuthMiddleware(this));
         if(enableDashboard) {
             server.get("/", ex -> {

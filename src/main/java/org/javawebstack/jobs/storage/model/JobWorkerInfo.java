@@ -15,6 +15,7 @@ public class JobWorkerInfo {
     String queue;
     String hostname;
     boolean online;
+    int threads;
     Date lastHeartbeatAt;
     Date createdAt;
 
@@ -39,6 +40,7 @@ public class JobWorkerInfo {
                 .setId(id)
                 .setQueue(queue)
                 .setHostname(hostname)
+                .setThreads(threads)
                 .setOnline(online)
                 .setLastHeartbeatAt(lastHeartbeatAt)
                 .setCreatedAt(createdAt);

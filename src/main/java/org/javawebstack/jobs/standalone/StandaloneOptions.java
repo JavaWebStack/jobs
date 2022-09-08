@@ -33,6 +33,9 @@ public class StandaloneOptions {
         put("DB_PREFIX", "db.prefix");
         put("API_PORT", "api.port");
         put("DASHBOARD", "dashboard");
+        put("WORKER_QUEUES", "worker.queues");
+        put("WORKER_THREADS", "worker.threads");
+        put("WORKER_INTERVAL", "worker.interval");
     }};
 
     final Map<String, String> options = new HashMap<>();

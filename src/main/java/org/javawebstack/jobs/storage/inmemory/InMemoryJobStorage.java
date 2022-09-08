@@ -63,6 +63,14 @@ public class InMemoryJobStorage implements JobStorage {
         return stream.map(JobInfo::clone).collect(Collectors.toList());
     }
 
+    public Map<JobStatus, Integer> getJobCountsByStatuses() {
+        Map<JobStatus, Integer> counts = new HashMap<>();
+        for(JobStatus status : JobStatus.values()) {
+            counts.put(status, (int) jobs.stream().filter(r -> r.getStatus() == status).count());
+        }
+        return counts;
+    }
+
     public void createEvent(JobEvent data) {
         data.checkRequired();
         data.sanitize();
@@ -71,6 +79,10 @@ public class InMemoryJobStorage implements JobStorage {
 
     public JobEvent getEvent(UUID id) {
         return events.stream().filter(j -> j.getId().equals(id)).findFirst().map(JobEvent::clone).orElse(null);
+    }
+
+    public List<JobEvent> queryEvents(UUID jobId) {
+        return events.stream().filter(e -> e.getJobId().equals(jobId)).map(JobEvent::clone).collect(Collectors.toList());
     }
 
     public void createLogEntry(JobLogEntry entry) {
@@ -85,6 +97,13 @@ public class InMemoryJobStorage implements JobStorage {
         if(entries == null)
             return null;
         return entries.stream().filter(j -> j.getId().equals(id)).findFirst().map(JobLogEntry::clone).orElse(null);
+    }
+
+    public List<JobLogEntry> queryLogEntries(UUID eventId) {
+        List<JobLogEntry> entries = logEntries.get(eventId);
+        if(entries == null)
+            entries = new ArrayList<>();
+        return entries.stream().map(JobLogEntry::clone).collect(Collectors.toList());
     }
 
     public void createWorker(JobWorkerInfo info) {

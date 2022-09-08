@@ -1,12 +1,17 @@
 package org.javawebstack.jobs.api.controller;
 
+import org.javawebstack.abstractdata.AbstractElement;
+import org.javawebstack.abstractdata.AbstractObject;
 import org.javawebstack.httpserver.Exchange;
 import org.javawebstack.httpserver.router.annotation.PathPrefix;
 import org.javawebstack.httpserver.router.annotation.With;
+import org.javawebstack.httpserver.router.annotation.params.Body;
 import org.javawebstack.httpserver.router.annotation.params.Path;
 import org.javawebstack.httpserver.router.annotation.verbs.Get;
+import org.javawebstack.httpserver.router.annotation.verbs.Post;
 import org.javawebstack.jobs.JobStatus;
 import org.javawebstack.jobs.Jobs;
+import org.javawebstack.jobs.api.request.CreateJobRequest;
 import org.javawebstack.jobs.api.response.Response;
 import org.javawebstack.jobs.storage.model.JobInfo;
 import org.javawebstack.jobs.storage.model.JobQuery;
@@ -33,12 +38,39 @@ public class JobController extends Controller {
         return Response.success().setData(storage.queryJobs(query));
     }
 
+    @Post
+    public Response create(@Body CreateJobRequest request) {
+        UUID id;
+        if(request.getScheduleAt() != null) {
+            id = jobs.schedule(request.getQueue(), request.getScheduleAt(), request.getType(), request.getPayload().toJsonString());
+        } else {
+            id = jobs.enqueue(request.getQueue(), request.getType(), request.getPayload().toJsonString());
+        }
+        JobInfo info = storage.getJob(id);
+        if(info == null)
+            return Response.error(500, "Failed to create the job");
+        return Response.success().setData(info);
+    }
+
     @Get("{uuid:id}")
-    public Response get(@Path("id") UUID id) {
+    public Response get(@Path("id") UUID id, Exchange exchange) {
         JobInfo info = storage.getJob(id);
         if(info == null)
             return Response.error(404, "Job not found");
-        return Response.success().setData(info);
+        AbstractObject res = exchange.getServer().getAbstractMapper().toAbstract(info).object();
+        if(exchange.getQueryParameters().has("payload") && (exchange.query("payload").length() == 0 || exchange.query("payload").equals("true")))
+            res.set("payload", AbstractElement.fromJson(storage.getJobPayload(info.getId())));
+        return Response.success().setData(res);
+    }
+
+    @Get("{uuid:jobid}/events")
+    public Response getEvents(@Path("jobid") UUID jobId) {
+        return Response.success().setData(storage.queryEvents(jobId));
+    }
+
+    @Get("{uuid:jobid}/events/{uuid:eventid}/logs")
+    public Response getLogEntries(@Path("jobid") UUID jobId, @Path("eventid") UUID eventId) {
+        return Response.success().setData(storage.queryLogEntries(eventId));
     }
 
 }
