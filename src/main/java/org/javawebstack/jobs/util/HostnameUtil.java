@@ -10,7 +10,7 @@ public class HostnameUtil {
     public static String getHostname() {
         if(hostname == null) {
             try {
-                Scanner s = new Scanner(Runtime.getRuntime().exec("hostname").getInputStream()).useDelimiter("\\A");
+                Scanner s = new Scanner(Runtime.getRuntime().exec("hostname").getInputStream()).useDelimiter("\\A|\\n");
                 hostname = s.hasNext() ? s.next() : "";
                 s.close();
             } catch (IOException e) {}

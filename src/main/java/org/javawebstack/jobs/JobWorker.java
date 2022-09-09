@@ -61,6 +61,7 @@ public class JobWorker {
             throw new IllegalStateException("Worker is already running");
         executor = (ThreadPoolExecutor) Executors.newFixedThreadPool(workerThreads);
         new Thread(new JobScheduling()).start();
+        running = true;
     }
 
     private class JobScheduling implements Runnable {
@@ -101,7 +102,7 @@ public class JobWorker {
                 ticked = ticked || poll.tick();
                 if(!ticked) {
                     try {
-                        Thread.sleep(100);
+                        Thread.sleep(50);
                     } catch (InterruptedException e) {}
                 }
             }

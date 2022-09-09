@@ -1,6 +1,8 @@
-package org.javawebstack.jobs.storage;
+package org.javawebstack.jobs.scheduler.sql;
 
-import org.javawebstack.jobs.storage.sql.SQLJobStorage;
+import org.javawebstack.jobs.scheduler.JobScheduler;
+import org.javawebstack.jobs.scheduler.JobSchedulerTest;
+import org.javawebstack.jobs.scheduler.sql.SQLJobScheduler;
 import org.javawebstack.jobs.test.TestProperties;
 import org.javawebstack.jobs.test.TestUtil;
 import org.javawebstack.jobs.test.precondition.SQLDatabaseAvailable;
@@ -9,19 +11,19 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 @ExtendWith(SQLDatabaseAvailable.class)
-public class SQLJobStorageTest extends JobStorageTest {
+public class SQLJobSchedulerTest extends JobSchedulerTest {
 
     private SQL sql;
 
-    protected JobStorage initStorage() {
+    protected JobScheduler initScheduler() {
         sql = TestProperties.createSQLDatabaseConnection();
-        TestUtil.purgeStorageDatabase(sql);
-        return new SQLJobStorage(sql, null);
+        TestUtil.purgeSchedulerDatabase(sql);
+        return new SQLJobScheduler(sql, null);
     }
 
     @AfterAll
     public void cleanup() {
-        TestUtil.purgeStorageDatabase(sql);
+        TestUtil.purgeSchedulerDatabase(sql);
     }
 
 }

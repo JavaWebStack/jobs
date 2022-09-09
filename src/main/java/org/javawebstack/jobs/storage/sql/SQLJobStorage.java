@@ -25,10 +25,10 @@ public class SQLJobStorage implements JobStorage {
         this.sql = sql;
         this.tablePrefix = tablePrefix;
         try {
-            sql.write("CREATE TABLE IF NOT EXISTS `" + table("jobs") + "` (`id` VARCHAR(36), `status` ENUM('CREATED', 'SCHEDULED', 'ENQUEUED', 'PROCESSING', 'SUCCESS', 'FAILED'), `type` VARCHAR(100) NOT NULL, `payload` LONGTEXT NOT NULL, `created_at` TIMESTAMP NOT NULL, PRIMARY KEY(`id`));");
-            sql.write("CREATE TABLE IF NOT EXISTS `" + table("job_events") + "` (`id` VARCHAR(36), `job_id` VARCHAR(36) NOT NULL, `type` ENUM('SCHEDULED','ENQUEUED','PROCESSING','FAILED','SUCCESS') NOT NULL, `created_at` TIMESTAMP NOT NULL, PRIMARY KEY(`id`));");
-            sql.write("CREATE TABLE IF NOT EXISTS `" + table("job_log_entries") + "` (`id` VARCHAR(36), `event_id` VARCHAR(36) NOT NULL,`level` ENUM('INFO','WARNING','ERROR') NOT NULL, `message` LONGTEXT NOT NULL, `created_at` TIMESTAMP NOT NULL, PRIMARY KEY(`id`));");
-            sql.write("CREATE TABLE IF NOT EXISTS `" + table("job_workers") + "` (`id` VARCHAR(36), `queue` VARCHAR(50) NOT NULL, `hostname` VARCHAR(50) NOT NULL, `threads` INT(11) NOT NULL, `online` TINYINT(1), `last_heartbeat_at` TIMESTAMP NOT NULL, `created_at` TIMESTAMP NOT NULL, PRIMARY KEY(`id`));");
+            sql.write("CREATE TABLE IF NOT EXISTS `" + table("jobs") + "` (`id` VARCHAR(36), `ord` BIGINT, `status` ENUM('CREATED', 'SCHEDULED', 'ENQUEUED', 'PROCESSING', 'SUCCESS', 'FAILED'), `type` VARCHAR(100) NOT NULL, `payload` LONGTEXT NOT NULL, `created_at` TIMESTAMP NOT NULL, PRIMARY KEY(`id`));");
+            sql.write("CREATE TABLE IF NOT EXISTS `" + table("job_events") + "` (`id` VARCHAR(36), `ord` BIGINT, `job_id` VARCHAR(36) NOT NULL, `type` ENUM('SCHEDULED','ENQUEUED','PROCESSING','FAILED','SUCCESS') NOT NULL, `created_at` TIMESTAMP NOT NULL, PRIMARY KEY(`id`));");
+            sql.write("CREATE TABLE IF NOT EXISTS `" + table("job_log_entries") + "` (`id` VARCHAR(36), `ord` BIGINT, `event_id` VARCHAR(36) NOT NULL,`level` ENUM('INFO','WARNING','ERROR') NOT NULL, `message` LONGTEXT NOT NULL, `created_at` TIMESTAMP NOT NULL, PRIMARY KEY(`id`));");
+            sql.write("CREATE TABLE IF NOT EXISTS `" + table("job_workers") + "` (`id` VARCHAR(36), `ord` BIGINT, `queue` VARCHAR(50) NOT NULL, `hostname` VARCHAR(50) NOT NULL, `threads` INT(11) NOT NULL, `online` TINYINT(1), `last_heartbeat_at` TIMESTAMP NOT NULL, `created_at` TIMESTAMP NOT NULL, PRIMARY KEY(`id`));");
         } catch (SQLException e) {
             throw new RuntimeException(e);
         }
@@ -43,6 +43,7 @@ public class SQLJobStorage implements JobStorage {
         info.sanitize();
         SQLUtil.insert(sql, "jobs", new MapBuilder<String, Object>()
                 .set("id", info.getId())
+                .set("ord", System.currentTimeMillis())
                 .set("status", info.getStatus())
                 .set("type", info.getType())
                 .set("payload", payload)
@@ -98,6 +99,7 @@ public class SQLJobStorage implements JobStorage {
                 params.addAll(Arrays.asList(query.getStatus()));
             }
         }
+        sb.append(" ORDER BY `ord`");
         if(query.getLimit() != -1 || query.getOffset() != -1) {
             int offset = query.getOffset();
             if(offset < 0)
@@ -127,6 +129,7 @@ public class SQLJobStorage implements JobStorage {
         event.sanitize();
         SQLUtil.insert(sql, table("job_events"), new MapBuilder<String, Object>()
                 .set("id", event.getId())
+                .set("ord", System.currentTimeMillis())
                 .set("job_id", event.getJobId())
                 .set("type", event.getType())
                 .set("created_at", event.getCreatedAt())
@@ -142,7 +145,7 @@ public class SQLJobStorage implements JobStorage {
     }
 
     public List<JobEvent> queryEvents(UUID jobId) {
-        return SQLUtil.select(sql, table("job_events"), "`id`,`job_id`,`type`,`created_at`", "WHERE `job_id`=?", jobId).stream().map(this::buildJobEvent).collect(Collectors.toList());
+        return SQLUtil.select(sql, table("job_events"), "`id`,`job_id`,`type`,`created_at`", "WHERE `job_id`=? ORDER BY `ord`", jobId).stream().map(this::buildJobEvent).collect(Collectors.toList());
     }
 
     public void createLogEntry(JobLogEntry entry) {
@@ -150,6 +153,7 @@ public class SQLJobStorage implements JobStorage {
         entry.sanitize();
         SQLUtil.insert(sql, table("job_log_entries"), new MapBuilder<String, Object>()
                 .set("id", entry.getId())
+                .set("ord", System.currentTimeMillis())
                 .set("event_id", entry.getEventId())
                 .set("level", entry.getLevel())
                 .set("message", entry.getMessage())
@@ -166,7 +170,7 @@ public class SQLJobStorage implements JobStorage {
     }
 
     public List<JobLogEntry> queryLogEntries(UUID eventId) {
-        return SQLUtil.select(sql, table("job_log_entries"), "`id`,`event_id`,`level`,`message`,`created_at`", "WHERE `event_id`=?", eventId).stream().map(this::buildJobLogEntry).collect(Collectors.toList());
+        return SQLUtil.select(sql, table("job_log_entries"), "`id`,`event_id`,`level`,`message`,`created_at`", "WHERE `event_id`=? ORDER BY `ord`", eventId).stream().map(this::buildJobLogEntry).collect(Collectors.toList());
     }
 
     public void createWorker(JobWorkerInfo info) {
@@ -174,6 +178,7 @@ public class SQLJobStorage implements JobStorage {
         info.sanitize();
         SQLUtil.insert(sql, table("job_workers"), new MapBuilder<String, Object>()
                 .set("id", info.getId())
+                .set("ord", System.currentTimeMillis())
                 .set("queue", info.getQueue())
                 .set("threads", info.getThreads())
                 .set("online", info.isOnline())

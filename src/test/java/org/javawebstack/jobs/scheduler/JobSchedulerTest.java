@@ -44,6 +44,19 @@ public abstract class JobSchedulerTest {
     }
 
     @Test
+    public void testQueueOrder() {
+        // UUID's are selected to be in reversed alphabetical order to ensure the storage doesn't order by id
+        UUID firstJob = UUID.fromString("20000000-0000-0000-0000-000000000000");
+        UUID secondJob = UUID.fromString("10000000-0000-0000-0000-000000000000");
+        scheduler.enqueue(TEST_QUEUE, firstJob);
+        scheduler.enqueue(TEST_QUEUE, secondJob);
+        List<UUID> queue = scheduler.getQueueEntries(TEST_QUEUE);
+        assertTrue(queue.size() >= 2);
+        assertEquals(firstJob, queue.get(queue.size() - 2));
+        assertEquals(secondJob, queue.get(queue.size() - 1));
+    }
+
+    @Test
     public void testProcessSchedule() {
         String queue = UUID.randomUUID().toString();
         UUID jobId = UUID.randomUUID();

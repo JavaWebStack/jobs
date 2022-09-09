@@ -189,6 +189,25 @@ public abstract class JobStorageTest {
     }
 
     @Test
+    public void testQueryEvents() {
+        JobInfo job = new JobInfo()
+                .setType(NoOpJob.class.getName());
+        storage.createJob(job, NOOP_PAYLOAD);
+        JobEvent firstEvent = new JobEvent()
+                .setJobId(job.getId())
+                .setType(JobEvent.Type.SCHEDULED);
+        storage.createEvent(firstEvent);
+        JobEvent secondEvent = new JobEvent()
+                .setJobId(job.getId())
+                .setType(JobEvent.Type.ENQUEUED);
+        storage.createEvent(secondEvent);
+        List<JobEvent> receivedEvents = storage.queryEvents(job.getId());
+        assertEquals(2, receivedEvents.size());
+        assertEquals(firstEvent.getId(), receivedEvents.get(0).getId());
+        assertEquals(secondEvent.getId(), receivedEvents.get(1).getId());
+    }
+
+    @Test
     public void testCreateAndGetLogEntry() {
         UUID expectedId = UUID.randomUUID();
         UUID expectedEventId = UUID.randomUUID();
@@ -238,11 +257,37 @@ public abstract class JobStorageTest {
     }
 
     @Test
+    public void testQueryLogEntries() {
+        JobInfo job = new JobInfo()
+                .setType(NoOpJob.class.getName());
+        storage.createJob(job, NOOP_PAYLOAD);
+        JobEvent event = new JobEvent()
+                .setJobId(job.getId())
+                .setType(JobEvent.Type.SCHEDULED);
+        storage.createEvent(event);
+        JobLogEntry firstEntry = new JobLogEntry()
+                .setEventId(event.getId())
+                .setLevel(LogLevel.INFO)
+                .setMessage("a message");
+        storage.createLogEntry(firstEntry);
+        JobLogEntry secondEntry = new JobLogEntry()
+                .setEventId(event.getId())
+                .setLevel(LogLevel.INFO)
+                .setMessage("another message");
+        storage.createLogEntry(secondEntry);
+        List<JobLogEntry> receivedEntries = storage.queryLogEntries(event.getId());
+        assertEquals(2, receivedEntries.size());
+        assertEquals(firstEntry.getId(), receivedEntries.get(0).getId());
+        assertEquals(secondEntry.getId(), receivedEntries.get(1).getId());
+    }
+
+    @Test
     public void testCreateAndGetWorker() {
         UUID expectedId = UUID.randomUUID();
         String expectedQueue = TEST_QUEUE;
         String expectedHostname = EXAMPLE_HOSTNAME;
         boolean expectedOnline = true;
+        int expectedThreads = 5;
         Date expectedLastHeartbeatAt = new Date(END_OF_THE_WORLD);
         Date expectedCreatedAt = new Date(MILLENNIUM);
         JobWorkerInfo createInfo = new JobWorkerInfo()
@@ -250,6 +295,7 @@ public abstract class JobStorageTest {
                 .setQueue(expectedQueue)
                 .setHostname(expectedHostname)
                 .setOnline(expectedOnline)
+                .setThreads(expectedThreads)
                 .setLastHeartbeatAt(expectedLastHeartbeatAt)
                 .setCreatedAt(expectedCreatedAt);
         storage.createWorker(createInfo);
@@ -259,6 +305,7 @@ public abstract class JobStorageTest {
         assertEquals(expectedQueue, retrievedInfo.getQueue());
         assertEquals(expectedHostname, retrievedInfo.getHostname());
         assertEquals(expectedOnline, retrievedInfo.isOnline());
+        assertEquals(expectedThreads, retrievedInfo.getThreads());
         assertEquals(expectedLastHeartbeatAt, retrievedInfo.getLastHeartbeatAt());
         assertEquals(expectedCreatedAt, retrievedInfo.getCreatedAt());
     }
@@ -284,6 +331,17 @@ public abstract class JobStorageTest {
         JobWorkerInfo infoWithoutHostname = new JobWorkerInfo().setId(UUID.randomUUID()).setQueue(TEST_QUEUE);
         assertThrows(IllegalArgumentException.class, () -> storage.createWorker(infoWithoutHostname));
         assertNull(storage.getWorker(infoWithoutHostname.getId()));
+    }
+
+    @Test
+    public void testQueryWorkers() {
+        JobWorkerInfo info = new JobWorkerInfo()
+                .setQueue(TEST_QUEUE)
+                .setHostname(EXAMPLE_HOSTNAME);
+        storage.createWorker(info);
+        List<JobWorkerInfo> workers = storage.queryWorkers();
+        assertTrue(workers.size() >= 1);
+        assertEquals(1, workers.stream().filter(w -> w.getId().equals(info.getId())).count());
     }
 
     @Test
