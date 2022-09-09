@@ -1,16 +1,19 @@
 package org.javawebstack.jobs;
 
 import lombok.Getter;
-import org.javawebstack.abstractdata.mapper.Mapper;
+import lombok.Setter;
+import org.javawebstack.jobs.handler.JobExceptionHandler;
+import org.javawebstack.jobs.handler.retry.DefaultJobRetryHandler;
+import org.javawebstack.jobs.handler.retry.JobRetryHandler;
 import org.javawebstack.jobs.scheduler.JobScheduler;
 import org.javawebstack.jobs.serialization.JobSerializer;
 import org.javawebstack.jobs.storage.JobStorage;
 import org.javawebstack.jobs.storage.model.JobEvent;
 import org.javawebstack.jobs.storage.model.JobInfo;
-import org.javawebstack.jobs.storage.model.JobLogEntry;
 
-import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.List;
 import java.util.UUID;
 
 @Getter
@@ -19,6 +22,11 @@ public class Jobs {
     final JobStorage storage;
     final JobScheduler scheduler;
     final JobSerializer serializer;
+    @Setter
+    JobRetryHandler defaultRetryHandler = new DefaultJobRetryHandler();
+    @Setter
+    int defaultMaxRetries = 10;
+    final List<JobExceptionHandler> exceptionHandlers = new ArrayList<>();
 
     public Jobs(JobStorage storage, JobScheduler scheduler, JobSerializer serializer) {
         this.storage = storage;
@@ -26,32 +34,63 @@ public class Jobs {
         this.serializer = serializer;
     }
 
+    public Jobs addExceptionHandler(JobExceptionHandler handler) {
+        this.exceptionHandlers.add(handler);
+        return this;
+    }
+
     public UUID enqueue(String queue, Job job) {
-        return enqueue(queue, job.getClass().getName(), serializer.serialize(job));
+        return enqueue(queue, job, defaultMaxRetries);
+    }
+
+    public UUID enqueue(String queue, Job job, int maxRetries) {
+        return enqueue(queue, job.getClass().getName(), serializer.serialize(job), maxRetries);
     }
 
     public UUID enqueue(String queue, String type, String payload) {
+        return enqueue(queue, type, payload, defaultMaxRetries);
+    }
+
+    public UUID enqueue(String queue, String type, String payload, int maxRetries) {
         JobInfo info = new JobInfo()
                 .setType(type)
-                .setStatus(JobStatus.ENQUEUED);
+                .setMaxRetries(maxRetries);
         this.storage.createJob(info, payload);
-        this.scheduler.enqueue(queue, info.getId());
-        JobEvent.createEnqueued(storage, info.getId(), queue);
+        enqueue(queue, info.getId());
         return info.getId();
+    }
+
+    public void enqueue(String queue, UUID id) {
+        scheduler.enqueue(queue, id);
+        JobEvent.createEnqueued(storage, id, queue);
+        storage.setJobStatus(id, JobStatus.ENQUEUED);
     }
 
     public UUID schedule(String queue, Date at, Job job) {
-        return schedule(queue, at, job.getClass().getName(), serializer.serialize(job));
+        return schedule(queue, at, job, defaultMaxRetries);
+    }
+
+    public UUID schedule(String queue, Date at, Job job, int maxRetries) {
+        return schedule(queue, at, job.getClass().getName(), serializer.serialize(job), maxRetries);
     }
 
     public UUID schedule(String queue, Date at, String type, String payload) {
+        return schedule(queue, at, type, payload, defaultMaxRetries);
+    }
+
+    public UUID schedule(String queue, Date at, String type, String payload, int maxRetries) {
         JobInfo info = new JobInfo()
                 .setType(type)
-                .setStatus(JobStatus.SCHEDULED);
-        this.storage.createJob(info, payload);
-        this.scheduler.schedule(queue, at, info.getId());
-        JobEvent.createScheduled(storage, info.getId(), at, queue);
+                .setMaxRetries(maxRetries);
+        storage.createJob(info, payload);
+        schedule(queue, at, info.getId());
         return info.getId();
+    }
+
+    public void schedule(String queue, Date at, UUID id) {
+        scheduler.schedule(queue, at, id);
+        JobEvent.createScheduled(storage, id, at, queue);
+        storage.setJobStatus(id, JobStatus.SCHEDULED);
     }
 
 }

@@ -2,6 +2,10 @@ package org.javawebstack.jobs;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;
+import org.javawebstack.jobs.handler.JobExceptionHandler;
+import org.javawebstack.jobs.handler.retry.JobRetryHandler;
+import org.javawebstack.jobs.handler.retry.RetryContext;
+import org.javawebstack.jobs.handler.retry.RetryReason;
 import org.javawebstack.jobs.scheduler.JobScheduler;
 import org.javawebstack.jobs.serialization.JobSerializer;
 import org.javawebstack.jobs.storage.JobStorage;
@@ -149,7 +153,7 @@ public class JobWorker {
                 storage.setJobStatus(id, JobStatus.FAILED);
                 return;
             }
-            JobContext context = new JobContext(jobs, info, event);
+            JobContext context = new JobContext(jobs, info, queue, event);
             try {
                 job.execute(context);
                 event = new JobEvent()
@@ -158,9 +162,47 @@ public class JobWorker {
                 storage.createEvent(event);
                 storage.setJobStatus(id, JobStatus.SUCCESS);
             } catch (Throwable t) {
+                JobRetryHandler retryHandler = (job instanceof JobRetryHandler) ? ((JobRetryHandler) job) : jobs.getDefaultRetryHandler();
                 if(t instanceof JobExitException) {
                     JobExitException jee = (JobExitException) t;
-                    if(jee.getRetry() == -1 || !jee.isSuccess()) {
+                    if(!jee.isSuccess()) {
+                        event = new JobEvent()
+                                .setJobId(id)
+                                .setType(JobEvent.Type.FAILED);
+                        storage.createEvent(event);
+                        if(jee.getMessage() != null) {
+                            storage.createLogEntry(new JobLogEntry()
+                                    .setEventId(event.getId())
+                                    .setLevel(LogLevel.ERROR)
+                                    .setMessage(jee.getMessage())
+                            );
+                        }
+                    }
+                    if(jee.isRetry()) {
+                        if(jee.getRetryInSeconds() != null) {
+                            if(jee.getRetryInSeconds() <= 0)
+                                jobs.enqueue(queue, info.getType(), payload);
+                            else
+                                jobs.schedule(queue, Date.from(Instant.now().plusSeconds(jee.getRetryInSeconds())), info.getType(), payload);
+                        } else {
+                            retryHandler.handleRetry(context, new RetryContext(jee.isSuccess() ? RetryReason.REQUESTED : RetryReason.FAILURE, null));
+                        }
+                    } else {
+                        if(jee.isSuccess()) {
+                            event = new JobEvent()
+                                    .setJobId(id)
+                                    .setType(JobEvent.Type.SUCCESS);
+                            storage.createEvent(event);
+                            if(jee.getMessage() != null) {
+                                storage.createLogEntry(new JobLogEntry()
+                                        .setEventId(event.getId())
+                                        .setLevel(LogLevel.INFO)
+                                        .setMessage(jee.getMessage())
+                                );
+                            }
+                        }
+                    }
+                    if(jee.getRetryInSeconds() == -1 || !jee.isSuccess()) {
                         event = new JobEvent()
                                 .setJobId(id)
                                 .setType(jee.isSuccess() ? JobEvent.Type.SUCCESS : JobEvent.Type.FAILED);
@@ -173,9 +215,9 @@ public class JobWorker {
                             );
                         }
                     }
-                    if(jee.getRetry() != -1) {
-                        if(jee.getRetry() > 0) {
-                            Date nextTry = Date.from(Instant.now().plusSeconds(jee.getRetry()));
+                    if(jee.getRetryInSeconds() != -1) {
+                        if(jee.getRetryInSeconds() > 0) {
+                            Date nextTry = Date.from(Instant.now().plusSeconds(jee.getRetryInSeconds()));
                             jobs.getScheduler().schedule(queue, nextTry, info.getId());
                             JobEvent.createScheduled(storage, info.getId(), nextTry, queue);
                             storage.setJobStatus(id, JobStatus.SCHEDULED);
@@ -189,6 +231,9 @@ public class JobWorker {
                     }
                     return;
                 }
+                if(job instanceof JobExceptionHandler)
+                    ((JobExceptionHandler) job).handleException(context, t);
+                jobs.getExceptionHandlers().forEach(h -> h.handleException(context, t));
                 StringWriter sw = new StringWriter();
                 t.printStackTrace(new PrintWriter(sw));
                 event = new JobEvent()
@@ -201,6 +246,8 @@ public class JobWorker {
                         .setMessage("An exception occured during the execution:\n" + sw)
                 );
                 storage.setJobStatus(id, JobStatus.FAILED);
+                RetryContext retryContext = new RetryContext(RetryReason.EXCEPTION, t);
+                retryHandler.handleRetry(context, retryContext);
             }
         }
 

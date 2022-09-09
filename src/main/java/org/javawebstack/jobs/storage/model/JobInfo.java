@@ -15,6 +15,8 @@ public class JobInfo {
     UUID id;
     JobStatus status;
     String type;
+    int retries;
+    int maxRetries;
     Date createdAt;
 
     public JobInfo clone() {

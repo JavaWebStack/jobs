@@ -9,6 +9,7 @@ public class JobExitException extends RuntimeException {
 
     boolean success;
     String message;
-    int retry;
+    boolean retry;
+    Integer retryInSeconds;
 
 }
