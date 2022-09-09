@@ -16,9 +16,9 @@ import java.util.UUID;
 @Getter
 public class Jobs {
 
-    JobStorage storage;
-    JobScheduler scheduler;
-    JobSerializer serializer;
+    final JobStorage storage;
+    final JobScheduler scheduler;
+    final JobSerializer serializer;
 
     public Jobs(JobStorage storage, JobScheduler scheduler, JobSerializer serializer) {
         this.storage = storage;
