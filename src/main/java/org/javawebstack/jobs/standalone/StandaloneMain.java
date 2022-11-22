@@ -21,7 +21,7 @@ public class StandaloneMain {
             int threads = options.getInt("worker.threads", 1);
             int interval = options.getInt("worker.interval", 1000);
             for(String queue : options.get("worker.queues").split(",")) {
-                new JobWorker(jobs, queue, threads, interval).start();
+                new JobWorker(jobs, queue, threads, interval);
             }
         }
     }

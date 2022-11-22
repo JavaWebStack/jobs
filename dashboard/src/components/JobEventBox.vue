@@ -2,7 +2,7 @@
   <div class="event-box" :class="{ active, [`event-type-${ event.type.toLowerCase() }`]: true }">
     <div class="event-box-header" @click="toggleActive()">
       <div class="summary">
-        {{ eventTitles[event.type] }} <span class="float-end">{{ event.created_at }}</span>
+        {{ eventTitles[event.type] || 'Unknown' }} <span class="float-end">{{ event.created_at }}</span>
       </div>
     </div>
     <div class="collapse event-box-content" :class="{ show: active }">
@@ -42,6 +42,7 @@ export default {
       logs: [],
       loading: false,
       eventTitles: {
+        SCHEDULED: 'Job scheduled',
         ENQUEUED: 'Job enqueued',
         PROCESSING: 'Processing job',
         FAILED: 'Job processing failed',

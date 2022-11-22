@@ -6,6 +6,7 @@ import org.javawebstack.httpserver.helper.HttpMethod;
 import org.javawebstack.httpserver.transformer.response.JsonResponseTransformer;
 import org.javawebstack.jobs.Jobs;
 import org.javawebstack.jobs.api.auth.AuthProvider;
+import org.javawebstack.jobs.api.controller.ErrorController;
 import org.javawebstack.jobs.api.controller.JobController;
 import org.javawebstack.jobs.api.controller.StatusController;
 import org.javawebstack.jobs.api.controller.WorkerController;
@@ -68,6 +69,7 @@ public class JobApi {
         if(prefix.length() > 0 && enableDashboard)
             throw new IllegalArgumentException("Prefix can not be set when the dashboard is enabled!");
         server
+                .exceptionHandler(new ErrorController())
                 .controller(prefix, new JobController(jobs))
                 .controller(prefix, new StatusController(jobs))
                 .controller(prefix, new WorkerController(jobs))
