@@ -11,12 +11,12 @@ import java.util.stream.Stream;
 
 public class InMemoryJobStorage implements JobStorage {
 
-    List<JobInfo> jobs = new ArrayList<>();
-    Map<UUID, String> jobPayloads = new HashMap<>();
-    List<JobEvent> events = new ArrayList<>();
-    Map<UUID, List<JobLogEntry>> logEntries = new HashMap<>();
+    final List<JobInfo> jobs = new ArrayList<>();
+    final Map<UUID, String> jobPayloads = new HashMap<>();
+    final List<JobEvent> events = new ArrayList<>();
+    final Map<UUID, List<JobLogEntry>> logEntries = new HashMap<>();
 
-    List<JobWorkerInfo> workers = new ArrayList<>();
+    final List<JobWorkerInfo> workers = new ArrayList<>();
 
     public void createJob(JobInfo info, String payload) {
         info.checkRequired();
