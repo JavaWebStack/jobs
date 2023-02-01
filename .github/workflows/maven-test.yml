@@ -29,6 +29,7 @@ jobs:
           touch test.properties
           echo "database.mysql.host=127.0.0.1" >> test.properties
           echo "database.mysql.port=$DB_PORT" >> test.properties
+          echo "database.mysql.name=test" >> test.properties
           echo "database.mysql.user=root" >> test.properties
           echo "database.mysql.password=password" >> test.properties
           cat test.properties
