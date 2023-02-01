@@ -11,9 +11,8 @@ jobs:
         ports:
           - 3306:3306
         env:
-          MYSQL_PASSWORD: password
           MYSQL_DATABASE: test
-          MYSQL_ROOT_PASSWORD: password
+          MYSQL_ALLOW_EMPTY_PASSWORD: yes
         options: --health-cmd="mysqladmin ping" --health-interval=5s --health-timeout=2s --health-retries=3
 
     steps:
@@ -23,15 +22,13 @@ jobs:
         with:
           java-version: 1.8
       - name: Setup test environment
-        env:
-          DB_PORT: ${{ job.services.mariadb.ports[3306] }}
         run: |
           touch test.properties
-          echo "database.mysql.host=localhost" >> test.properties
-          echo "database.mysql.port=$DB_PORT" >> test.properties
+          echo "database.mysql.host=127.0.0.1" >> test.properties
+          echo "database.mysql.port=3306" >> test.properties
           echo "database.mysql.name=test" >> test.properties
           echo "database.mysql.user=root" >> test.properties
-          echo "database.mysql.password=password" >> test.properties
+          echo "database.mysql.password=" >> test.properties
           cat test.properties
       - name: Test
         run: mvn -B test
