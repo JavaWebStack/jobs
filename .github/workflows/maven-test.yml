@@ -27,7 +27,7 @@ jobs:
           DB_PORT: ${{ job.services.mariadb.ports[3306] }}
         run: |
           touch test.properties
-          echo "database.mysql.host=mariadb" >> test.properties
+          echo "database.mysql.host=127.0.0.1" >> test.properties
           echo "database.mysql.port=$DB_PORT" >> test.properties
           echo "database.mysql.user=root" >> test.properties
           echo "database.mysql.password=password" >> test.properties
