@@ -33,5 +33,3 @@ jobs:
           echo "database.mysql.password=password" >> test.properties
       - name: Test
         run: mvn -B test
-        env:
-
