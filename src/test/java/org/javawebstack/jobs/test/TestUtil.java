@@ -17,7 +17,8 @@ public class TestUtil {
                     "jobs",
                     "job_events",
                     "job_log_entries",
-                    "job_workers"
+                    "job_workers",
+                    "recurring_jobs"
             };
             for(String t : TABLES)
                 sql.write("DROP TABLE IF EXISTS `" + t + "`;");

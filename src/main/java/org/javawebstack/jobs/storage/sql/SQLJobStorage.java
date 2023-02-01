@@ -2,6 +2,7 @@ package org.javawebstack.jobs.storage.sql;
 
 import org.javawebstack.jobs.JobStatus;
 import org.javawebstack.jobs.LogLevel;
+import org.javawebstack.jobs.scheduler.interval.CronInterval;
 import org.javawebstack.jobs.storage.model.*;
 import org.javawebstack.jobs.storage.JobStorage;
 import org.javawebstack.jobs.util.MapBuilder;
@@ -29,6 +30,7 @@ public class SQLJobStorage implements JobStorage {
             sql.write("CREATE TABLE IF NOT EXISTS `" + table("job_events") + "` (`id` VARCHAR(36), `ord` BIGINT, `job_id` VARCHAR(36) NOT NULL, `type` ENUM('SCHEDULED','ENQUEUED','PROCESSING','FAILED','SUCCESS') NOT NULL, `created_at` TIMESTAMP NOT NULL, PRIMARY KEY(`id`));");
             sql.write("CREATE TABLE IF NOT EXISTS `" + table("job_log_entries") + "` (`id` VARCHAR(36), `ord` BIGINT, `event_id` VARCHAR(36) NOT NULL,`level` ENUM('INFO','WARNING','ERROR') NOT NULL, `message` LONGTEXT NOT NULL, `created_at` TIMESTAMP NOT NULL, PRIMARY KEY(`id`));");
             sql.write("CREATE TABLE IF NOT EXISTS `" + table("job_workers") + "` (`id` VARCHAR(36), `ord` BIGINT, `queue` VARCHAR(50) NOT NULL, `hostname` VARCHAR(50) NOT NULL, `threads` INT(11) NOT NULL, `online` TINYINT(1), `last_heartbeat_at` TIMESTAMP NOT NULL, `created_at` TIMESTAMP NOT NULL, PRIMARY KEY(`id`));");
+            sql.write("CREATE TABLE IF NOT EXISTS `" + table("recurring_jobs") + "` (`job_id` VARCHAR(36), `ord` BIGINT, `cron_expression` VARCHAR(255) NOT NULL, `last_execution_at` TIMESTAMP, `created_at` TIMESTAMP NOT NULL, PRIMARY KEY(`job_id`));");
         } catch (SQLException e) {
             throw new RuntimeException(e);
         }
@@ -39,8 +41,8 @@ public class SQLJobStorage implements JobStorage {
     }
 
     public void createJob(JobInfo info, String payload) {
-        info.checkRequired();
-        info.sanitize();
+        JobStorage.super.createJob(info, payload);
+
         SQLUtil.insert(sql, "jobs", new MapBuilder<String, Object>()
                 .set("id", info.getId())
                 .set("ord", System.currentTimeMillis())
@@ -52,11 +54,30 @@ public class SQLJobStorage implements JobStorage {
         );
     }
 
+    public void createRecurrentJob(RecurringJobInfo info) {
+        JobStorage.super.createRecurrentJob(info);
+
+        SQLUtil.insert(sql, "recurring_jobs", new MapBuilder<String, Object>()
+                .set("job_id", info.getJobId())
+                .set("ord", System.currentTimeMillis())
+                .set("cron_expression", info.getCron().toString())
+                .set("created_at", new Date())
+                .build()
+        );
+    }
+
     public JobInfo getJob(UUID id) {
         List<Map<String, Object>> results = SQLUtil.select(sql, table("jobs"), "`id`,`status`,`type`,`created_at`", "WHERE `id`=? LIMIT 1", id);
         if(results.size() == 0)
             return null;
         return buildJobInfo(results.get(0));
+    }
+
+    public RecurringJobInfo getRecurringJob(UUID id) {
+        List<Map<String, Object>> results = SQLUtil.select(sql, table("recurring_jobs"), "`job_id`,`cron_expression`,`last_execution_at`,`created_at`", "WHERE `job_id`=? LIMIT 1", id);
+        if (results.size() == 0)
+            return null;
+        return buildRecurringJobInfo(results.get(0));
     }
 
     public String getJobPayload(UUID id) {
@@ -77,6 +98,7 @@ public class SQLJobStorage implements JobStorage {
         SQLUtil.delete(sql, table("job_log_entries"), "EXISTS(SELECT `id` FROM `" + table("job_events") + "` WHERE `" + table("job_events") + "`.id=`" + table("job_log_entries") + "`.event_id AND `" + table("job_events") + "`.job_id=?)", id);
         SQLUtil.delete(sql, table("job_events"), "`job_id`=?", id);
         SQLUtil.delete(sql, table("jobs"), "`id`=?", id);
+        SQLUtil.delete(sql, table("recurring_jobs"), "`job_id`=?", id);
     }
 
     public List<JobInfo> queryJobs(JobQuery query) {
@@ -209,35 +231,32 @@ public class SQLJobStorage implements JobStorage {
     }
 
     private JobInfo buildJobInfo(Map<String, Object> values) {
-        JobInfo info = new JobInfo()
+        return new JobInfo()
                 .setId(UUID.fromString((String) values.get("id")))
                 .setStatus(JobStatus.valueOf((String) values.get("status")))
                 .setType((String) values.get("type"))
                 .setCreatedAt((Date) values.get("created_at"));
-        return info;
     }
 
     private JobEvent buildJobEvent(Map<String, Object> values) {
-        JobEvent event = new JobEvent()
+        return new JobEvent()
                 .setId(UUID.fromString((String) values.get("id")))
                 .setJobId(UUID.fromString((String) values.get("job_id")))
                 .setType(JobEvent.Type.valueOf((String) values.get("type")))
                 .setCreatedAt((Date) values.get("created_at"));
-        return event;
     }
 
     private JobLogEntry buildJobLogEntry(Map<String, Object> values) {
-        JobLogEntry entry = new JobLogEntry()
+        return new JobLogEntry()
                 .setId(UUID.fromString((String) values.get("id")))
                 .setEventId(UUID.fromString((String) values.get("event_id")))
                 .setLevel(LogLevel.valueOf((String) values.get("level")))
                 .setMessage((String) values.get("message"))
                 .setCreatedAt((Date) values.get("created_at"));
-        return entry;
     }
 
     private JobWorkerInfo buildJobWorkerInfo(Map<String, Object> values) {
-        JobWorkerInfo info = new JobWorkerInfo()
+        return new JobWorkerInfo()
                 .setId(UUID.fromString((String) values.get("id")))
                 .setQueue((String) values.get("queue"))
                 .setHostname((String) values.get("hostname"))
@@ -245,7 +264,13 @@ public class SQLJobStorage implements JobStorage {
                 .setOnline((Boolean) values.get("online"))
                 .setLastHeartbeatAt((Date) values.get("last_heartbeat_at"))
                 .setCreatedAt((Date) values.get("created_at"));
-        return info;
     }
 
+    private RecurringJobInfo buildRecurringJobInfo(Map<String, Object> values) {
+        return new RecurringJobInfo()
+                .setJobId(UUID.fromString((String) values.get("job_id")))
+                .setCron(new CronInterval((String) values.get("cron_expression")))
+                .setLastExecutionAt((Date) values.get("last_execution_at"))
+                .setCreatedAt((Date) values.get("created_at"));
+    }
 }

@@ -1,5 +1,6 @@
 package org.javawebstack.jobs;
 
+import org.javawebstack.jobs.handler.JobExceptionHandler;
 import org.javawebstack.jobs.scheduler.JobScheduler;
 import org.javawebstack.jobs.scheduler.inmemory.InMemoryJobScheduler;
 import org.javawebstack.jobs.scheduler.model.JobScheduleEntry;
@@ -34,6 +35,15 @@ public class JobsTest {
                 scheduler,
                 new JsonJobSerializer()
         );
+    }
+
+    @Test
+    public void testAddExceptionHandler() {
+        assertEquals(0, jobs.getExceptionHandlers().size());
+        jobs.addExceptionHandler((context, t) -> {
+            t.printStackTrace();
+        });
+        assertEquals(1, jobs.getExceptionHandlers().size());
     }
 
     @Test

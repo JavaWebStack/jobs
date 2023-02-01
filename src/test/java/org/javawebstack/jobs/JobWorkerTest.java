@@ -57,4 +57,12 @@ public class JobWorkerTest {
         worker.stop();
     }
 
+    @Test
+    public void testAlreadyRunningJobWorker() {
+        String queue = "test_ " + UUID.randomUUID();
+        JobWorker worker = new JobWorker(jobs, queue, 1, 10);
+        assertTrue(worker.isRunning());
+        assertThrows(IllegalStateException.class, worker::start);
+    }
+
 }

@@ -2,6 +2,7 @@ package org.javawebstack.jobs.storage;
 
 import org.javawebstack.jobs.JobStatus;
 import org.javawebstack.jobs.LogLevel;
+import org.javawebstack.jobs.scheduler.interval.CronInterval;
 import org.javawebstack.jobs.storage.model.*;
 import org.javawebstack.jobs.test.jobs.JobWithData;
 import org.javawebstack.jobs.test.jobs.NoOpJob;
@@ -345,7 +346,7 @@ public abstract class JobStorageTest {
     }
 
     @Test
-    public void testSetWorkerOnline() throws InterruptedException {
+    public void testSetWorkerOnline() {
         JobWorkerInfo info = new JobWorkerInfo()
                 .setQueue(TEST_QUEUE)
                 .setOnline(true)
@@ -358,6 +359,31 @@ public abstract class JobStorageTest {
         JobWorkerInfo infoAfterSetOffline = storage.getWorker(info.getId());
         assertFalse(infoAfterSetOffline.isOnline());
         assertNotEquals(infoAfterCreate.getLastHeartbeatAt(), infoAfterSetOffline.getLastHeartbeatAt());
+    }
+
+    @Test
+    public void testCreateAndGetRecurringJob() {
+        RecurringJobInfo info = new RecurringJobInfo()
+                .setJobId(UUID.randomUUID())
+                .setCron(new CronInterval("@daily"));
+        assertThrows(IllegalArgumentException.class, () -> storage.createRecurrentJob(info));
+        JobInfo jobInfo = new JobInfo()
+                .setId(info.getJobId()) // set to same id
+                .setType(NoOpJob.class.getName());
+        storage.createJob(jobInfo, NOOP_PAYLOAD);
+        storage.createRecurrentJob(info);
+        assertNotNull(storage.getRecurringJob(info.getJobId()));
+    }
+
+    @Test
+    public void testRecurringJobValidation() {
+        RecurringJobInfo info = new RecurringJobInfo();
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> storage.createRecurrentJob(info));
+        assertEquals("Recurring Job jobId is required", exception.getMessage());
+
+        info.setJobId(UUID.randomUUID());
+        exception = assertThrows(IllegalArgumentException.class, () -> storage.createRecurrentJob(info));
+        assertEquals("Recurring Job cron is required", exception.getMessage());
     }
 
 }
