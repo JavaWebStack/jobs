@@ -5,6 +5,16 @@ on: [push, pull_request]
 jobs:
   build:
     runs-on: ubuntu-latest
+    services:
+      mariadb:
+        image: mariadb:latest
+        ports:
+          - 3306:3306
+        env:
+          MYSQL_PASSWORD: password
+          MYSQL_DATABASE: test
+          MYSQL_ALLOW_EMPTY_PASSWORD: yes
+        options: --health-cmd="mysqladmin ping" --health-interval=5s --health-timeout=2s --health-retries=3
 
     steps:
       - uses: actions/checkout@v2
@@ -12,5 +22,14 @@ jobs:
         uses: actions/setup-java@v1
         with:
           java-version: 1.8
+      - name: Setup test environment
+        run: |
+          touch test.properties
+          echo "database.mysql.host=127.0.0.1" >> test.properties
+          echo "database.mysql.port=3306" >> test.properties
+          echo "database.mysql.name=test" >> test.properties
+          echo "database.mysql.username=root" >> test.properties
+          echo "database.mysql.password=" >> test.properties
+          cat test.properties
       - name: Test
         run: mvn -B test
