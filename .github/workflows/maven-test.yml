@@ -1,0 +1,35 @@
+name: Maven Test
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    services:
+      mariadb:
+        image: mariadb:latest
+        ports:
+          - 3306
+        env:
+          MYSQL_PASSWORD: password
+          MYSQL_DATABASE: test
+          MYSQL_ROOT_PASSWORD: password
+        options: --health-cmd="mysqladmin ping" --health-interval=5s --health-timeout=2s --health-retries=3
+
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up JDK 1.8
+        uses: actions/setup-java@v1
+        with:
+          java-version: 1.8
+      - name: Setup test environment
+        env:
+          DB_PORT: ${{ job.services.mariadb.ports[3306] }}
+        run: |
+          touch test.properties
+          echo "database.mysql.host=mariadb" >> test.properties
+          echo "database.mysql.port=$DB_PORT" >> test.properties
+          echo "database.mysql.user=root" >> test.properties
+          echo "database.mysql.password=password" >> test.properties
+      - name: Test
+        run: mvn -B test
+        env:
+
