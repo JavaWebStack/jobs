@@ -9,8 +9,19 @@ import java.util.UUID;
 
 public interface JobStorage {
 
-    void createJob(JobInfo info, String payload);
+    default void createJob(JobInfo info, String payload) {
+        info.checkRequired();
+        info.sanitize();
+    }
+    default void createRecurrentJob(RecurringJobInfo info) {
+        info.checkRequired();
+        info.sanitize();
+
+        if (getJob(info.getJobId()) == null)
+            throw new IllegalArgumentException("Job Id is unknown");
+    }
     JobInfo getJob(UUID id);
+    RecurringJobInfo getRecurringJob(UUID id);
     String getJobPayload(UUID id);
     void setJobStatus(UUID id, JobStatus status);
     void deleteJob(UUID id);

@@ -13,20 +13,31 @@ public class InMemoryJobStorage implements JobStorage {
 
     final List<JobInfo> jobs = new ArrayList<>();
     final Map<UUID, String> jobPayloads = new HashMap<>();
+    final List<RecurringJobInfo> recurringJobs = new ArrayList<>();
     final List<JobEvent> events = new ArrayList<>();
     final Map<UUID, List<JobLogEntry>> logEntries = new HashMap<>();
 
     final List<JobWorkerInfo> workers = new ArrayList<>();
 
     public void createJob(JobInfo info, String payload) {
-        info.checkRequired();
-        info.sanitize();
+        JobStorage.super.createJob(info, payload);
+
         jobs.add(info.clone());
         jobPayloads.put(info.getId(), payload);
     }
 
+    public void createRecurrentJob(RecurringJobInfo info) {
+        JobStorage.super.createRecurrentJob(info);
+
+        recurringJobs.add(info.clone());
+    }
+
     public JobInfo getJob(UUID id) {
         return jobs.stream().filter(j -> j.getId().equals(id)).findFirst().map(JobInfo::clone).orElse(null);
+    }
+
+    public RecurringJobInfo getRecurringJob(UUID id) {
+        return recurringJobs.stream().filter(j -> j.getJobId().equals(id)).findFirst().map(RecurringJobInfo::clone).orElse(null);
     }
 
     public String getJobPayload(UUID id) {
@@ -103,7 +114,7 @@ public class InMemoryJobStorage implements JobStorage {
         List<JobLogEntry> entries = logEntries.get(eventId);
         if(entries == null)
             entries = new ArrayList<>();
-        return entries.stream().map(JobLogEntry::clone).collect(Collectors.toList());
+        return new ArrayList<>(entries.stream().map(JobLogEntry::clone).collect(Collectors.toList()));
     }
 
     public void createWorker(JobWorkerInfo info) {

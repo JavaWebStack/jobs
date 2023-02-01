@@ -6,6 +6,7 @@ import org.javawebstack.jobs.handler.JobExceptionHandler;
 import org.javawebstack.jobs.handler.retry.DefaultJobRetryHandler;
 import org.javawebstack.jobs.handler.retry.JobRetryHandler;
 import org.javawebstack.jobs.scheduler.JobScheduler;
+import org.javawebstack.jobs.scheduler.interval.CronInterval;
 import org.javawebstack.jobs.serialization.JobSerializer;
 import org.javawebstack.jobs.storage.JobStorage;
 import org.javawebstack.jobs.storage.model.JobEvent;
@@ -93,4 +94,15 @@ public class Jobs {
         storage.setJobStatus(id, JobStatus.SCHEDULED);
     }
 
+    public UUID scheduleRecurrently(String queue, String cron, Job job) {
+        return scheduleRecurrently(queue, new CronInterval(cron), job);
+    }
+
+    public UUID scheduleRecurrently(String queue, CronInterval interval, Job job) {
+        return scheduleRecurrently(queue, interval, job.getClass().getName(), serializer.serialize(job));
+    }
+
+    public UUID scheduleRecurrently(String queue, CronInterval interval, String type, String payload) {
+        return null;
+    }
 }
