@@ -141,7 +141,7 @@ public class SQLJobStorage implements JobStorage {
         Map<JobStatus, Integer> counts = new HashMap<>();
         List<Map<String, Object>> results = SQLUtil.select(sql, table("jobs"), "`status`,COUNT(`status`) AS `count`", null);
         for(JobStatus status : JobStatus.values()) {
-            counts.put(status, results.stream().filter(r -> r.get("status").equals(status.name())).map(r -> ((Long) r.get("count")).intValue()).findFirst().orElse(0));
+            counts.put(status, results.stream().filter(r -> r.get("status") != null && r.get("status").equals(status.name())).map(r -> ((Long) r.get("count")).intValue()).findFirst().orElse(0));
         }
         return counts;
     }
