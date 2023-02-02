@@ -43,7 +43,7 @@ public class SQLJobStorage implements JobStorage {
     public void createJob(JobInfo info, String payload) {
         JobStorage.super.createJob(info, payload);
 
-        SQLUtil.insert(sql, "jobs", new MapBuilder<String, Object>()
+        SQLUtil.insert(sql, table("jobs"), new MapBuilder<String, Object>()
                 .set("id", info.getId())
                 .set("ord", System.currentTimeMillis())
                 .set("status", info.getStatus())
@@ -57,7 +57,7 @@ public class SQLJobStorage implements JobStorage {
     public void createRecurrentJob(RecurringJobInfo info) {
         JobStorage.super.createRecurrentJob(info);
 
-        SQLUtil.insert(sql, "recurring_jobs", new MapBuilder<String, Object>()
+        SQLUtil.insert(sql, table("recurring_jobs"), new MapBuilder<String, Object>()
                 .set("job_id", info.getJobId())
                 .set("ord", System.currentTimeMillis())
                 .set("cron_expression", info.getCron().toString())
@@ -88,7 +88,7 @@ public class SQLJobStorage implements JobStorage {
     }
 
     public void setJobStatus(UUID id, JobStatus status) {
-        SQLUtil.update(sql, "jobs", new MapBuilder<String, Object>()
+        SQLUtil.update(sql, table("jobs"), new MapBuilder<String, Object>()
                 .set("status", status)
                 .build()
                 ,"`id`=?", id);

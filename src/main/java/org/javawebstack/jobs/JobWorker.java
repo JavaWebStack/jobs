@@ -66,6 +66,7 @@ public class JobWorker {
         executor = (ThreadPoolExecutor) Executors.newFixedThreadPool(workerThreads);
         new Thread(new JobScheduling()).start();
         running = true;
+        Runtime.getRuntime().addShutdownHook(new Thread(this::stop));
     }
 
     private class JobScheduling implements Runnable {
