@@ -1,7 +1,17 @@
 <template>
   <div>
     <div class="card border-secondary mb-3">
-      <div class="card-header"><h2>Job - {{ job.id }}</h2></div>
+      <div class="card-header">
+        <h2 class="float-start">
+          Job - {{ job.id }}
+        </h2>
+        <div class="float-end">
+          <div class="btn-group">
+            <button class="btn btn-outline-primary" @click="requeue()">Requeue</button>
+            <button class="btn btn-outline-danger" @click="deleteJob()">Delete</button>
+          </div>
+        </div>
+      </div>
       <div class="card-body">
         <h4 class="card-title">{{ job.type }}</h4>
         <p class="card-text">
@@ -59,6 +69,16 @@ export default {
           name: 'jobs'
         })
       })
+    },
+    deleteJob() {
+      api.delete('/jobs/' + this.job.id).then(() => {
+        this.$router.push({
+          name: 'jobs'
+        })
+      })
+    },
+    requeue() {
+
     },
     fetchEvents() {
       api.get('/jobs/' + this.job.id + '/events').then(res => this.events = res.data.data)

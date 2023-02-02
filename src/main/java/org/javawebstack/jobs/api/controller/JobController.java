@@ -7,6 +7,7 @@ import org.javawebstack.httpserver.router.annotation.PathPrefix;
 import org.javawebstack.httpserver.router.annotation.With;
 import org.javawebstack.httpserver.router.annotation.params.Body;
 import org.javawebstack.httpserver.router.annotation.params.Path;
+import org.javawebstack.httpserver.router.annotation.verbs.Delete;
 import org.javawebstack.httpserver.router.annotation.verbs.Get;
 import org.javawebstack.httpserver.router.annotation.verbs.Post;
 import org.javawebstack.jobs.JobStatus;
@@ -69,6 +70,20 @@ public class JobController extends Controller {
         if(exchange.getQueryParameters().has("payload") && (exchange.query("payload").length() == 0 || exchange.query("payload").equals("true")))
             res.set("payload", AbstractElement.fromJson(storage.getJobPayload(info.getId())));
         return Response.success().setData(res);
+    }
+
+    @Delete("{uuid:id}")
+    public Response delete(@Path("id") UUID id, Exchange exchange) {
+        JobInfo info = storage.getJob(id);
+        if (info == null)
+            return Response.error(404, "Job not found");
+        // TODO: Cancel job if running
+        if (info.getStatus() == JobStatus.PROCESSING)
+            return Response.error(419, "Cannot abort jobs yet");
+
+        storage.deleteJob(id);
+
+        return Response.success();
     }
 
     @Get("{uuid:jobid}/events")
