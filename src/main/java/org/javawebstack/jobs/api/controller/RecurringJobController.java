@@ -58,7 +58,7 @@ public class RecurringJobController extends Controller {
     }
 
     @Delete("{uuid:id}")
-    public Response delete(@Path("id") UUID id, Exchange exchange) {
+    public Response delete(@Path("id") UUID id) {
         RecurringJobInfo info = storage.getRecurringJob(id);
         if (info == null)
             return Response.error(404, "Recurring job not found");

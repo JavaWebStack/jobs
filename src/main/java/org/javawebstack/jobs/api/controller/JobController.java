@@ -66,7 +66,7 @@ public class JobController extends Controller {
     }
 
     @Delete("{uuid:id}")
-    public Response delete(@Path("id") UUID id, Exchange exchange) {
+    public Response delete(@Path("id") UUID id) {
         JobInfo info = storage.getJob(id);
         if (info == null)
             return Response.error(404, "Job not found");
