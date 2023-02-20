@@ -36,5 +36,6 @@ public interface JobStorage {
     JobWorkerInfo getWorker(UUID id);
     List<JobWorkerInfo> queryWorkers();
     void setWorkerOnline(UUID id, boolean online);
+    void updateRecurringJobLastJob(UUID id, UUID newJobId);
 
 }

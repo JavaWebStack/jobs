@@ -2,6 +2,7 @@ package org.javawebstack.jobs.storage.model;
 
 import lombok.Getter;
 import lombok.Setter;
+import org.javawebstack.abstractdata.AbstractObject;
 import org.javawebstack.jobs.scheduler.interval.CronInterval;
 
 import java.util.Date;
@@ -12,6 +13,9 @@ import java.util.UUID;
 public class RecurringJobInfo {
 
     UUID id;
+    UUID lastJobId;
+    String queue;
+    String payload;
     String type;
     CronInterval cron;
     Date lastExecutionAt;
@@ -20,6 +24,9 @@ public class RecurringJobInfo {
     public RecurringJobInfo clone() {
         return new RecurringJobInfo()
                 .setId(id)
+                .setLastJobId(lastJobId)
+                .setQueue(queue)
+                .setPayload(payload)
                 .setType(type)
                 .setCron(cron)
                 .setLastExecutionAt(lastExecutionAt)
@@ -39,6 +46,8 @@ public class RecurringJobInfo {
         if (createdAt == null)
             createdAt = new Date();
         if (lastExecutionAt == null)
-            lastExecutionAt = cron.next(createdAt);
+            lastExecutionAt = new Date();
+        if (payload == null)
+            payload = "{}";
     }
 }

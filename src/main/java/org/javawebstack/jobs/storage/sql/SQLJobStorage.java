@@ -30,7 +30,7 @@ public class SQLJobStorage implements JobStorage {
             sql.write("CREATE TABLE IF NOT EXISTS `" + table("job_events") + "` (`id` VARCHAR(36), `ord` BIGINT, `job_id` VARCHAR(36) NOT NULL, `type` ENUM('SCHEDULED','ENQUEUED','PROCESSING','FAILED','SUCCESS') NOT NULL, `created_at` TIMESTAMP NOT NULL, PRIMARY KEY(`id`));");
             sql.write("CREATE TABLE IF NOT EXISTS `" + table("job_log_entries") + "` (`id` VARCHAR(36), `ord` BIGINT, `event_id` VARCHAR(36) NOT NULL,`level` ENUM('INFO','WARNING','ERROR') NOT NULL, `message` LONGTEXT NOT NULL, `created_at` TIMESTAMP NOT NULL, PRIMARY KEY(`id`));");
             sql.write("CREATE TABLE IF NOT EXISTS `" + table("job_workers") + "` (`id` VARCHAR(36), `ord` BIGINT, `queue` VARCHAR(50) NOT NULL, `hostname` VARCHAR(50) NOT NULL, `threads` INT(11) NOT NULL, `online` TINYINT(1), `last_heartbeat_at` TIMESTAMP NOT NULL, `created_at` TIMESTAMP NOT NULL, PRIMARY KEY(`id`));");
-            sql.write("CREATE TABLE IF NOT EXISTS `" + table("recurring_jobs") + "` (`id` VARCHAR(36), `ord` BIGINT, `type` VARCHAR(100) NOT NULL, `cron_expression` VARCHAR(255) NOT NULL, `last_execution_at` TIMESTAMP, `created_at` TIMESTAMP NOT NULL, PRIMARY KEY(`job_id`));");
+            sql.write("CREATE TABLE IF NOT EXISTS `" + table("recurring_jobs") + "` (`id` VARCHAR(36), `ord` BIGINT, `queue` VARCHAR(50) NOT NULL, `payload` VARCHAR(1000) DEFAULT '{}', `type` VARCHAR(100) NOT NULL, `last_job_id` VARCHAR(36), `cron_expression` VARCHAR(255) NOT NULL, `last_execution_at` TIMESTAMP, `created_at` TIMESTAMP NOT NULL, PRIMARY KEY(`job_id`));");
         } catch (SQLException e) {
             throw new RuntimeException(e);
         }
@@ -59,6 +59,9 @@ public class SQLJobStorage implements JobStorage {
 
         SQLUtil.insert(sql, table("recurring_jobs"), new MapBuilder<String, Object>()
                 .set("id", info.getId())
+                .set("last_job_id", info.getLastJobId())
+                .set("queue", info.getQueue())
+                .set("payload", info.getPayload())
                 .set("type", info.getType())
                 .set("ord", System.currentTimeMillis())
                 .set("cron_expression", info.getCron().toString())
@@ -75,7 +78,7 @@ public class SQLJobStorage implements JobStorage {
     }
 
     public RecurringJobInfo getRecurringJob(UUID id) {
-        List<Map<String, Object>> results = SQLUtil.select(sql, table("recurring_jobs"), "`id`, `type`,`cron_expression`,`last_execution_at`,`created_at`", "WHERE `job_id`=? LIMIT 1", id);
+        List<Map<String, Object>> results = SQLUtil.select(sql, table("recurring_jobs"), "`id`,`queue`,`payload`,`type`,`cron_expression`,`last_execution_at`,`created_at`", "WHERE `job_id`=? LIMIT 1", id);
         if (results.size() == 0)
             return null;
         return buildRecurringJobInfo(results.get(0));
@@ -158,7 +161,7 @@ public class SQLJobStorage implements JobStorage {
                 limit = Integer.MAX_VALUE;
             sb.append(" LIMIT ").append(offset).append(",").append(limit);
         }
-        return SQLUtil.select(sql, table("recurring_jobs"), "`id`,`type`,`cron`,`last_execution_at`,`created_at`", sb.toString().trim(), params.toArray())
+        return SQLUtil.select(sql, table("recurring_jobs"), "`id`,`queue`,`payload`,`type`,`cron`,`last_execution_at`,`created_at`", sb.toString().trim(), params.toArray())
                 .stream()
                 .map(this::buildRecurringJobInfo)
                 .collect(Collectors.toList());
@@ -257,6 +260,13 @@ public class SQLJobStorage implements JobStorage {
         ,"`id`=?", id);
     }
 
+    public void updateRecurringJobLastJob(UUID id, UUID newJobId) {
+        SQLUtil.update(sql, table("recurring_jobs"), new MapBuilder<String, Object>()
+                .set("last_job_id", newJobId)
+                .build()
+        , "`id`=?", id);
+    }
+
     private JobInfo buildJobInfo(Map<String, Object> values) {
         return new JobInfo()
                 .setId(UUID.fromString((String) values.get("id")))
@@ -297,6 +307,8 @@ public class SQLJobStorage implements JobStorage {
         return new RecurringJobInfo()
                 .setId(UUID.fromString((String) values.get("id")))
                 .setType((String) values.get("type"))
+                .setQueue((String) values.get("queue"))
+                .setPayload((String) values.get("payload"))
                 .setCron(new CronInterval((String) values.get("cron_expression")))
                 .setLastExecutionAt((Date) values.get("last_execution_at"))
                 .setCreatedAt((Date) values.get("created_at"));
