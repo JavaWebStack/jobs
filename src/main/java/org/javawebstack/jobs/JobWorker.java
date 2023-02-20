@@ -18,7 +18,6 @@ import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.time.Instant;
 import java.util.Date;
-import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadPoolExecutor;
@@ -101,14 +100,15 @@ public class JobWorker {
             }, 0, pollInterval);
             SyncTimer processRecurrent = new SyncTimer(() -> {
                 storage.queryRecurringJobs(new RecurringJobQuery()).forEach(recurringJob -> {
+                    Date nextExecution = recurringJob.getCron().next(recurringJob.getLastExecutionAt());
                     if (recurringJob.getLastJobId() == null) {
-                        UUID newId = jobs.schedule(recurringJob.getQueue(), recurringJob.getCron().next(recurringJob.getLastExecutionAt()), recurringJob.getType(), recurringJob.getPayload());
-                        storage.updateRecurringJobLastJob(recurringJob.getId(), newId);
+                        UUID newId = jobs.schedule(recurringJob.getQueue(), nextExecution, recurringJob.getType(), recurringJob.getPayload());
+                        storage.updateRecurringJob(recurringJob.getId(), newId, nextExecution);
                     } else {
                         JobInfo info = storage.getJob(recurringJob.getLastJobId());
                         if (info == null || info.getStatus() == JobStatus.SUCCESS || info.getStatus() == JobStatus.FAILED) { // processing is done at this point
-                            UUID newId = jobs.schedule(recurringJob.getQueue(), recurringJob.getCron().next(recurringJob.getLastExecutionAt()), recurringJob.getType(), recurringJob.getPayload());
-                            storage.updateRecurringJobLastJob(recurringJob.getId(), newId);
+                            UUID newId = jobs.schedule(recurringJob.getQueue(), nextExecution, recurringJob.getType(), recurringJob.getPayload());
+                            storage.updateRecurringJob(recurringJob.getId(), newId, nextExecution);
                         }
                     }
                 });

@@ -157,11 +157,12 @@ public class InMemoryJobStorage implements JobStorage {
         info.setLastHeartbeatAt(Date.from(Instant.now()));
     }
 
-    public void updateRecurringJobLastJob(UUID id, UUID newJobId) {
+    public void updateRecurringJob(UUID id, UUID newJobId, Date lastExecutionAt) {
         RecurringJobInfo info = recurringJobs.stream().filter(j -> j.getId().equals(id)).findFirst().orElse(null);
         if (info == null)
             return;
         info.setLastJobId(newJobId);
+        info.setLastExecutionAt(lastExecutionAt);
     }
 
 }

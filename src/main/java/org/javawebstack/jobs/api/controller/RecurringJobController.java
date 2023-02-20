@@ -41,7 +41,7 @@ public class RecurringJobController extends Controller {
 
     @Post
     public Response create(@Body CreateRecurringJobRequest request) {
-        UUID id = jobs.scheduleRecurrently(request.getQueue(), request.getCron(), request.getType());
+        UUID id = jobs.scheduleRecurrently(request.getQueue(), request.getCron(), request.getType(), request.getPayload().toJsonString());
         RecurringJobInfo info = storage.getRecurringJob(id);
         if(info == null)
             return Response.error(500, "Failed to create the recurring job");

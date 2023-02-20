@@ -260,9 +260,10 @@ public class SQLJobStorage implements JobStorage {
         ,"`id`=?", id);
     }
 
-    public void updateRecurringJobLastJob(UUID id, UUID newJobId) {
+    public void updateRecurringJob(UUID id, UUID newJobId, Date lastExecutionAt) {
         SQLUtil.update(sql, table("recurring_jobs"), new MapBuilder<String, Object>()
                 .set("last_job_id", newJobId)
+                .set("last_execution_at", lastExecutionAt)
                 .build()
         , "`id`=?", id);
     }

@@ -11,6 +11,7 @@ import org.javawebstack.jobs.serialization.JobSerializer;
 import org.javawebstack.jobs.storage.JobStorage;
 import org.javawebstack.jobs.storage.model.JobEvent;
 import org.javawebstack.jobs.storage.model.JobInfo;
+import org.javawebstack.jobs.storage.model.RecurringJobInfo;
 
 import java.util.ArrayList;
 import java.util.Date;
@@ -95,14 +96,20 @@ public class Jobs {
     }
 
     public UUID scheduleRecurrently(String queue, String cron, Job job) {
-        return scheduleRecurrently(queue, new CronInterval(cron), job.getClass().getName());
+        return scheduleRecurrently(queue, cron, job.getClass().getName(), "{}");
     }
 
-    public UUID scheduleRecurrently(String queue, String cron, String type) {
-        return scheduleRecurrently(queue, new CronInterval(cron), type);
+    public UUID scheduleRecurrently(String queue, String cron, String type, String payload) {
+        return scheduleRecurrently(queue, new CronInterval(cron), type, payload);
     }
 
-    public UUID scheduleRecurrently(String queue, CronInterval interval, String type) {
-        return null;
+    public UUID scheduleRecurrently(String queue, CronInterval interval, String type, String payload) {
+        RecurringJobInfo info = new RecurringJobInfo()
+                .setQueue(queue)
+                .setCron(interval)
+                .setType(type)
+                .setPayload(payload);
+        storage.createRecurrentJob(info);
+        return info.getId();
     }
 }

@@ -3,6 +3,7 @@ package org.javawebstack.jobs.storage;
 import org.javawebstack.jobs.JobStatus;
 import org.javawebstack.jobs.storage.model.*;
 
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -36,6 +37,6 @@ public interface JobStorage {
     JobWorkerInfo getWorker(UUID id);
     List<JobWorkerInfo> queryWorkers();
     void setWorkerOnline(UUID id, boolean online);
-    void updateRecurringJobLastJob(UUID id, UUID newJobId);
+    void updateRecurringJob(UUID id, UUID newJobId, Date lastExecutionAt);
 
 }
