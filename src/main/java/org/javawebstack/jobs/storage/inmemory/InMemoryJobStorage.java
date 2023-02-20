@@ -37,7 +37,7 @@ public class InMemoryJobStorage implements JobStorage {
     }
 
     public RecurringJobInfo getRecurringJob(UUID id) {
-        return recurringJobs.stream().filter(j -> j.getJobId().equals(id)).findFirst().map(RecurringJobInfo::clone).orElse(null);
+        return recurringJobs.stream().filter(j -> j.getId().equals(id)).findFirst().map(RecurringJobInfo::clone).orElse(null);
     }
 
     public String getJobPayload(UUID id) {

@@ -364,24 +364,19 @@ public abstract class JobStorageTest {
     @Test
     public void testCreateAndGetRecurringJob() {
         RecurringJobInfo info = new RecurringJobInfo()
-                .setJobId(UUID.randomUUID())
+                .setType(NoOpJob.class.getName())
                 .setCron(new CronInterval("@daily"));
-        assertThrows(IllegalArgumentException.class, () -> storage.createRecurrentJob(info));
-        JobInfo jobInfo = new JobInfo()
-                .setId(info.getJobId()) // set to same id
-                .setType(NoOpJob.class.getName());
-        storage.createJob(jobInfo, NOOP_PAYLOAD);
         storage.createRecurrentJob(info);
-        assertNotNull(storage.getRecurringJob(info.getJobId()));
+        assertNotNull(storage.getRecurringJob(info.getId()));
     }
 
     @Test
     public void testRecurringJobValidation() {
         RecurringJobInfo info = new RecurringJobInfo();
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> storage.createRecurrentJob(info));
-        assertEquals("Recurring Job jobId is required", exception.getMessage());
+        assertEquals("Recurring Job type is required", exception.getMessage());
 
-        info.setJobId(UUID.randomUUID());
+        info.setType(NoOpJob.class.getName());
         exception = assertThrows(IllegalArgumentException.class, () -> storage.createRecurrentJob(info));
         assertEquals("Recurring Job cron is required", exception.getMessage());
     }

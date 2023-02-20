@@ -16,9 +16,6 @@ public interface JobStorage {
     default void createRecurrentJob(RecurringJobInfo info) {
         info.checkRequired();
         info.sanitize();
-
-        if (getJob(info.getJobId()) == null)
-            throw new IllegalArgumentException("Job Id is unknown");
     }
     JobInfo getJob(UUID id);
     RecurringJobInfo getRecurringJob(UUID id);
