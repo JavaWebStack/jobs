@@ -1,12 +1,13 @@
 package org.javawebstack.jobs.storage.model;
 
+import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.Setter;
 import org.javawebstack.jobs.JobStatus;
 
 @Setter
 @Getter
-public class JobQuery extends PaginationQuery {
+public class JobQuery extends PaginationQuery<JobQuery> {
 
     JobStatus[] status;
     String type;

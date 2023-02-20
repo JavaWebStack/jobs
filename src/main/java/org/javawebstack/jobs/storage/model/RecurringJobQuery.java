@@ -5,7 +5,7 @@ import lombok.Setter;
 
 @Getter
 @Setter
-public class RecurringJobQuery extends PaginationQuery {
+public class RecurringJobQuery extends PaginationQuery<RecurringJobQuery> {
 
     String type;
 

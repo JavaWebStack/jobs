@@ -1,15 +1,11 @@
 package org.javawebstack.jobs.storage.model;
 
-import lombok.Getter;
-import lombok.Setter;
 import org.javawebstack.httpserver.Exchange;
 
-@Getter
-@Setter
-public abstract class PaginationQuery {
+public abstract class PaginationQuery<T extends PaginationQuery<T>> {
 
-    int limit = -1;
-    int offset = 0;
+    protected int limit = -1;
+    protected int offset = 0;
 
     public void parsePaginationQuery(Exchange exchange) {
         if(exchange.getQueryParameters().has("page")) {
@@ -22,4 +18,21 @@ public abstract class PaginationQuery {
         }
     }
 
+    public int getLimit() {
+        return limit;
+    }
+
+    public T setLimit(int limit) {
+        this.limit = limit;
+        return (T) this;
+    }
+
+    public int getOffset() {
+        return offset;
+    }
+
+    public T setOffset(int offset) {
+        this.offset = offset;
+        return (T) this;
+    }
 }
