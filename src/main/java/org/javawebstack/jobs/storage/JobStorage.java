@@ -22,7 +22,9 @@ public interface JobStorage {
     String getJobPayload(UUID id);
     void setJobStatus(UUID id, JobStatus status);
     void deleteJob(UUID id);
+    void deleteRecurringJob(UUID id);
     List<JobInfo> queryJobs(JobQuery query);
+    List<RecurringJobInfo> queryRecurringJobs(RecurringJobQuery query);
     Map<JobStatus, Integer> getJobCountsByStatuses();
     void createEvent(JobEvent data);
     JobEvent getEvent(UUID id);

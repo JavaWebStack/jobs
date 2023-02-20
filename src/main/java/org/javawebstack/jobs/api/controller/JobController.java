@@ -31,14 +31,7 @@ public class JobController extends Controller {
     @Get
     public Response list(Exchange exchange) {
         JobQuery query = new JobQuery();
-        if(exchange.getQueryParameters().has("page")) {
-            int page = Integer.parseInt(exchange.query("page"));
-            int pageSize = 10;
-            if(exchange.getQueryParameters().has("page_size"))
-                pageSize = Integer.parseInt(exchange.query("page_size"));
-            query.setOffset((page - 1) * pageSize);
-            query.setLimit(pageSize);
-        }
+        query.parsePaginationQuery(exchange);
         if(exchange.getQueryParameters().has("type"))
             query.setType(exchange.query("type"));
         if(exchange.getQueryParameters().has("status")) {

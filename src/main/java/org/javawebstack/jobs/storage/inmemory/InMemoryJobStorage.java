@@ -59,6 +59,13 @@ public class InMemoryJobStorage implements JobStorage {
         jobPayloads.remove(info.getId());
     }
 
+    public void deleteRecurringJob(UUID id) {
+        RecurringJobInfo info = recurringJobs.stream().filter(j -> j.getId().equals(id)).findFirst().orElse(null);
+        if (info == null)
+            return;
+        recurringJobs.remove(info);
+    }
+
     public List<JobInfo> queryJobs(JobQuery query) {
         Stream<JobInfo> stream = jobs.stream();
         if(query.getType() != null)
@@ -72,6 +79,17 @@ public class InMemoryJobStorage implements JobStorage {
         if(query.getLimit() != -1)
             stream = stream.limit(query.getLimit());
         return stream.map(JobInfo::clone).collect(Collectors.toList());
+    }
+
+    public List<RecurringJobInfo> queryRecurringJobs(RecurringJobQuery query) {
+        Stream<RecurringJobInfo> stream = recurringJobs.stream();
+        if(query.getType() != null)
+            stream = stream.filter(j -> j.getType().equals(query.getType()));
+        if(query.getOffset() != -1)
+            stream = stream.skip(query.getOffset());
+        if(query.getLimit() != -1)
+            stream = stream.limit(query.getLimit());
+        return stream.map(RecurringJobInfo::clone).collect(Collectors.toList());
     }
 
     public Map<JobStatus, Integer> getJobCountsByStatuses() {

@@ -6,10 +6,7 @@ import org.javawebstack.httpserver.helper.HttpMethod;
 import org.javawebstack.httpserver.transformer.response.JsonResponseTransformer;
 import org.javawebstack.jobs.Jobs;
 import org.javawebstack.jobs.api.auth.AuthProvider;
-import org.javawebstack.jobs.api.controller.ErrorController;
-import org.javawebstack.jobs.api.controller.JobController;
-import org.javawebstack.jobs.api.controller.StatusController;
-import org.javawebstack.jobs.api.controller.WorkerController;
+import org.javawebstack.jobs.api.controller.*;
 import org.javawebstack.jobs.api.middleware.AuthMiddleware;
 import org.javawebstack.jobs.api.middleware.ResponseMiddleware;
 
@@ -71,6 +68,7 @@ public class JobApi {
         server
                 .exceptionHandler(new ErrorController())
                 .controller(prefix, new JobController(jobs))
+                .controller(prefix, new RecurringJobController(jobs))
                 .controller(prefix, new StatusController(jobs))
                 .controller(prefix, new WorkerController(jobs))
                 .afterAny(prefix + "{*:path}", new ResponseMiddleware())

@@ -101,6 +101,10 @@ public class SQLJobStorage implements JobStorage {
         SQLUtil.delete(sql, table("jobs"), "`id`=?", id);
     }
 
+    public void deleteRecurringJob(UUID id) {
+        SQLUtil.delete(sql, table("recurring_jobs"), "`id`=?", id);
+    }
+
     public List<JobInfo> queryJobs(JobQuery query) {
         StringBuilder sb = new StringBuilder();
         List<Object> params = new ArrayList<>();
@@ -134,6 +138,29 @@ public class SQLJobStorage implements JobStorage {
         return SQLUtil.select(sql, table("jobs"), "`id`,`status`,`type`,`created_at`", sb.toString().trim(), params.toArray())
                 .stream()
                 .map(this::buildJobInfo)
+                .collect(Collectors.toList());
+    }
+
+    public List<RecurringJobInfo> queryRecurringJobs(RecurringJobQuery query) {
+        StringBuilder sb = new StringBuilder();
+        List<Object> params = new ArrayList<>();
+        if(query.getType() != null) {
+            sb.append("WHERE `type`=?");
+            params.add(query.getType());
+        }
+        sb.append(" ORDER BY `ord`");
+        if(query.getLimit() != -1 || query.getOffset() != -1) {
+            int offset = query.getOffset();
+            if(offset < 0)
+                offset = 0;
+            int limit = query.getLimit();
+            if(limit < 0)
+                limit = Integer.MAX_VALUE;
+            sb.append(" LIMIT ").append(offset).append(",").append(limit);
+        }
+        return SQLUtil.select(sql, table("recurring_jobs"), "`id`,`type`,`cron`,`last_execution_at`,`created_at`", sb.toString().trim(), params.toArray())
+                .stream()
+                .map(this::buildRecurringJobInfo)
                 .collect(Collectors.toList());
     }
 

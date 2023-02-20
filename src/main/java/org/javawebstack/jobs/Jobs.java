@@ -95,14 +95,14 @@ public class Jobs {
     }
 
     public UUID scheduleRecurrently(String queue, String cron, Job job) {
-        return scheduleRecurrently(queue, new CronInterval(cron), job);
+        return scheduleRecurrently(queue, new CronInterval(cron), job.getClass().getName());
     }
 
-    public UUID scheduleRecurrently(String queue, CronInterval interval, Job job) {
-        return scheduleRecurrently(queue, interval, job.getClass().getName(), serializer.serialize(job));
+    public UUID scheduleRecurrently(String queue, String cron, String type) {
+        return scheduleRecurrently(queue, new CronInterval(cron), type);
     }
 
-    public UUID scheduleRecurrently(String queue, CronInterval interval, String type, String payload) {
+    public UUID scheduleRecurrently(String queue, CronInterval interval, String type) {
         return null;
     }
 }
