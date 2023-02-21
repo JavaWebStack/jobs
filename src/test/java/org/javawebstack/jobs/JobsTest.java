@@ -82,6 +82,12 @@ public class JobsTest {
     }
 
     @Test
+    public void testScheduleRecurrentlyNoPayload() {
+        UUID id = jobs.scheduleRecurrently(TEST_QUEUE, "@daily", new NoOpJob());
+        assertRecurrentlyScheduled(id);
+    }
+
+    @Test
     public void testScheduleRecurrently() {
         UUID id = jobs.scheduleRecurrently(TEST_QUEUE, "@daily", NoOpJob.class.getName(), "{}");
         assertRecurrentlyScheduled(id);

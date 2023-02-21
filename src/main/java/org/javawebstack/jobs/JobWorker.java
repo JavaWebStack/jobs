@@ -98,7 +98,7 @@ public class JobWorker {
                     storage.setJobStatus(id, JobStatus.ENQUEUED);
                 });
             }, 0, pollInterval);
-            SyncTimer processRecurrent = new SyncTimer(() -> {
+            SyncTimer processRecurring = new SyncTimer(() -> {
                 storage.queryRecurringJobs(new RecurringJobQuery()).forEach(recurringJob -> {
                     Date nextExecution = recurringJob.getCron().next(recurringJob.getLastExecutionAt());
                     if (recurringJob.getLastJobId() == null) {
@@ -117,11 +117,11 @@ public class JobWorker {
                 boolean ticked = heartbeat.tick();
                 ticked = ticked || processSchedule.tick();
                 ticked = ticked || poll.tick();
-                ticked = ticked || processRecurrent.tick();
+                ticked = ticked || processRecurring.tick();
                 if(!ticked) {
                     try {
                         Thread.sleep(50);
-                    } catch (InterruptedException e) {}
+                    } catch (InterruptedException ignored) {}
                 }
             }
             storage.setWorkerOnline(workerInfo.getId(), false);
