@@ -11,7 +11,6 @@ jobs:
         ports:
           - 3306:3306
         env:
-          MYSQL_PASSWORD: password
           MYSQL_DATABASE: test
           MYSQL_ALLOW_EMPTY_PASSWORD: yes
         options: --health-cmd="mysqladmin ping" --health-interval=5s --health-timeout=2s --health-retries=3
@@ -30,6 +29,5 @@ jobs:
           echo "database.mysql.name=test" >> test.properties
           echo "database.mysql.username=root" >> test.properties
           echo "database.mysql.password=" >> test.properties
-          cat test.properties
       - name: Test
         run: mvn -B test
