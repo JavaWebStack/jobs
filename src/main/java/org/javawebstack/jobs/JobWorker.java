@@ -99,7 +99,7 @@ public class JobWorker {
                 });
             }, 0, pollInterval);
             SyncTimer processRecurring = new SyncTimer(() -> {
-                storage.queryRecurringJobs(new RecurringJobQuery()).forEach(recurringJob -> {
+                storage.queryRecurringJobs(new RecurringJobQuery().setSinceLastExecution(new Date())).forEach(recurringJob -> {
                     Date nextExecution = recurringJob.getCron().next(recurringJob.getLastExecutionAt());
                     if (recurringJob.getLastJobId() == null) {
                         UUID newId = jobs.schedule(recurringJob.getQueue(), nextExecution, recurringJob.getType(), recurringJob.getPayload());

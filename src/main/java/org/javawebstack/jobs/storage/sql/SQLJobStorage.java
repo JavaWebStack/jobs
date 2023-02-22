@@ -54,8 +54,8 @@ public class SQLJobStorage implements JobStorage {
         );
     }
 
-    public void createRecurrentJob(RecurringJobInfo info) {
-        JobStorage.super.createRecurrentJob(info);
+    public void createRecurringJob(RecurringJobInfo info) {
+        JobStorage.super.createRecurringJob(info);
 
         SQLUtil.insert(sql, table("recurring_jobs"), new MapBuilder<String, Object>()
                 .set("id", info.getId())
@@ -66,6 +66,7 @@ public class SQLJobStorage implements JobStorage {
                 .set("ord", System.currentTimeMillis())
                 .set("cron_expression", info.getCron().toString())
                 .set("created_at", new Date())
+                .set("last_execution_at", info.getLastExecutionAt())
                 .build()
         );
     }
@@ -151,6 +152,22 @@ public class SQLJobStorage implements JobStorage {
             sb.append("WHERE `type`=?");
             params.add(query.getType());
         }
+        if (query.getQueue() != null) {
+            if(sb.length() == 0)
+                sb.append("WHERE ");
+            else
+                sb.append(" AND ");
+            sb.append("`queue`=?");
+            params.add(query.getQueue());
+        }
+        if (query.getSinceLastExecution() != null) {
+            if(sb.length() == 0)
+                sb.append("WHERE ");
+            else
+                sb.append(" AND ");
+            sb.append("(`last_execution_at` IS NULL OR `last_execution_at`<=?)");
+            params.add(query.getSinceLastExecution());
+        }
         sb.append(" ORDER BY `ord`");
         if(query.getLimit() != -1 || query.getOffset() != -1) {
             int offset = query.getOffset();
@@ -161,6 +178,7 @@ public class SQLJobStorage implements JobStorage {
                 limit = Integer.MAX_VALUE;
             sb.append(" LIMIT ").append(offset).append(",").append(limit);
         }
+        System.out.println(sb.toString());
         return SQLUtil.select(sql, table("recurring_jobs"), "`id`,`last_job_id`,`queue`,`payload`,`type`,`cron_expression`,`last_execution_at`,`created_at`", sb.toString().trim(), params.toArray())
                 .stream()
                 .map(this::buildRecurringJobInfo)

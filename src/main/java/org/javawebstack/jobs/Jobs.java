@@ -109,7 +109,7 @@ public class Jobs {
                 .setCron(interval)
                 .setType(type)
                 .setPayload(payload);
-        storage.createRecurrentJob(info);
+        storage.createRecurringJob(info);
         return info.getId();
     }
 }

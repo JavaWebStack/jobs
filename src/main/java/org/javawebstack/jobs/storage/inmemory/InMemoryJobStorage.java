@@ -26,8 +26,8 @@ public class InMemoryJobStorage implements JobStorage {
         jobPayloads.put(info.getId(), payload);
     }
 
-    public void createRecurrentJob(RecurringJobInfo info) {
-        JobStorage.super.createRecurrentJob(info);
+    public void createRecurringJob(RecurringJobInfo info) {
+        JobStorage.super.createRecurringJob(info);
 
         recurringJobs.add(info.clone());
     }
@@ -83,6 +83,10 @@ public class InMemoryJobStorage implements JobStorage {
 
     public List<RecurringJobInfo> queryRecurringJobs(RecurringJobQuery query) {
         Stream<RecurringJobInfo> stream = recurringJobs.stream();
+        if (query.getQueue() != null)
+            stream = stream.filter(j -> j.getQueue().equals(query.getQueue()));
+        if (query.getSinceLastExecution() != null)
+            stream = stream.filter(j -> j.getLastExecutionAt() == null || j.getLastExecutionAt().before(query.getSinceLastExecution()));
         if(query.getType() != null)
             stream = stream.filter(j -> j.getType().equals(query.getType()));
         if(query.getOffset() != -1)
