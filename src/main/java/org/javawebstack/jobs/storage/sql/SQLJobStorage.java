@@ -178,7 +178,6 @@ public class SQLJobStorage implements JobStorage {
                 limit = Integer.MAX_VALUE;
             sb.append(" LIMIT ").append(offset).append(",").append(limit);
         }
-        System.out.println(sb.toString());
         return SQLUtil.select(sql, table("recurring_jobs"), "`id`,`last_job_id`,`queue`,`payload`,`type`,`cron_expression`,`last_execution_at`,`created_at`", sb.toString().trim(), params.toArray())
                 .stream()
                 .map(this::buildRecurringJobInfo)
