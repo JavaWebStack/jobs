@@ -7,4 +7,6 @@ public interface Interval {
 
     Date next(@Nullable Date last);
 
+    String serialize();
+
 }

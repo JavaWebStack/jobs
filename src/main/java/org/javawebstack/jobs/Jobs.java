@@ -7,6 +7,7 @@ import org.javawebstack.jobs.handler.retry.DefaultJobRetryHandler;
 import org.javawebstack.jobs.handler.retry.JobRetryHandler;
 import org.javawebstack.jobs.scheduler.JobScheduler;
 import org.javawebstack.jobs.scheduler.interval.CronInterval;
+import org.javawebstack.jobs.scheduler.interval.Interval;
 import org.javawebstack.jobs.serialization.JobSerializer;
 import org.javawebstack.jobs.storage.JobStorage;
 import org.javawebstack.jobs.storage.model.JobEvent;
@@ -103,7 +104,7 @@ public class Jobs {
         return scheduleRecurrently(queue, new CronInterval(cron), type, payload);
     }
 
-    public UUID scheduleRecurrently(String queue, CronInterval interval, String type, String payload) {
+    public UUID scheduleRecurrently(String queue, Interval interval, String type, String payload) {
         RecurringJobInfo info = new RecurringJobInfo()
                 .setQueue(queue)
                 .setCron(interval)
@@ -111,5 +112,10 @@ public class Jobs {
                 .setPayload(payload);
         storage.createRecurringJob(info);
         return info.getId();
+    }
+
+    public void dequeue(UUID id) {
+        scheduler.dequeue(id);
+        storage.setJobStatus(id, JobStatus.DELETED);
     }
 }

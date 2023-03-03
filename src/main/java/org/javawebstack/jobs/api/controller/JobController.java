@@ -70,9 +70,13 @@ public class JobController extends Controller {
         JobInfo info = storage.getJob(id);
         if (info == null)
             return Response.error(404, "Job not found");
-        // TODO: Cancel job if running
-        if (info.getStatus() == JobStatus.PROCESSING)
+
+        if (info.getStatus() == JobStatus.PROCESSING) {
+            // TODO: Cancel job if running
             return Response.error(419, "Cannot abort jobs yet");
+        } else {
+            jobs.dequeue(id);
+        }
 
         storage.deleteJob(id);
 

@@ -49,7 +49,7 @@ public class CronInterval implements Interval {
         );
     }
 
-    public String toString() {
+    public String serialize() {
         return cron;
     }
 

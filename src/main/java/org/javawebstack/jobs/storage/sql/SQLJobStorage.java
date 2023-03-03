@@ -64,7 +64,7 @@ public class SQLJobStorage implements JobStorage {
                 .set("payload", info.getPayload())
                 .set("type", info.getType())
                 .set("ord", System.currentTimeMillis())
-                .set("cron_expression", info.getCron().toString())
+                .set("cron_expression", info.getCron().serialize())
                 .set("created_at", new Date())
                 .set("last_execution_at", info.getLastExecutionAt())
                 .build()

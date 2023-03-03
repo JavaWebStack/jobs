@@ -5,6 +5,7 @@ import lombok.Setter;
 import lombok.ToString;
 import org.javawebstack.abstractdata.AbstractObject;
 import org.javawebstack.jobs.scheduler.interval.CronInterval;
+import org.javawebstack.jobs.scheduler.interval.Interval;
 
 import java.util.Date;
 import java.util.UUID;
@@ -19,7 +20,7 @@ public class RecurringJobInfo {
     String queue;
     String payload;
     String type;
-    CronInterval cron;
+    Interval cron;
     Date lastExecutionAt;
     Date createdAt;
 

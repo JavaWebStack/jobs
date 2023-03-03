@@ -4,7 +4,6 @@ import org.javawebstack.jobs.scheduler.JobScheduler;
 import org.javawebstack.jobs.scheduler.model.JobScheduleEntry;
 import org.javawebstack.jobs.util.MapBuilder;
 import org.javawebstack.jobs.util.SQLUtil;
-import org.javawebstack.orm.wrapper.MySQL;
 import org.javawebstack.orm.wrapper.SQL;
 
 import java.sql.SQLException;
@@ -43,6 +42,10 @@ public class SQLJobScheduler implements JobScheduler {
                 .set("created_at", Date.from(Instant.now()))
                 .build()
         );
+    }
+
+    public void dequeue(UUID id) {
+        SQLUtil.delete(sql, table("queued_jobs"), "`id`=?", id);
     }
 
     public void schedule(String queue, Date at, UUID id) {

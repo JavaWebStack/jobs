@@ -7,6 +7,7 @@ public enum JobStatus {
     ENQUEUED,
     PROCESSING,
     SUCCESS,
-    FAILED
+    FAILED,
+    DELETED
 
 }
