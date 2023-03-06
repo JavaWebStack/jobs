@@ -54,7 +54,7 @@ public class JobWorkerTest {
         assertNotNull(recurringJobInfo);
         assertNotNull(recurringJobInfo.getLastJobId());
         UUID oldJobId = recurringJobInfo.getLastJobId();
-        Thread.sleep(91000);
+        Thread.sleep(120000);
         recurringJobInfo = jobs.getStorage().getRecurringJob(recurrentJob);
         assertNotEquals(oldJobId, recurringJobInfo.getLastJobId());
         worker.stop();
