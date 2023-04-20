@@ -9,6 +9,7 @@ import java.util.UUID;
 public interface JobScheduler {
 
     void enqueue(String queue, UUID id);
+    void dequeue(UUID id);
     void schedule(String queue, Date at, UUID id);
     UUID poll(String queue);
     List<UUID> processSchedule(String queue);

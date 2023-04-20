@@ -1,8 +1,12 @@
 package org.javawebstack.jobs;
 
 import org.javawebstack.jobs.scheduler.inmemory.InMemoryJobScheduler;
+import org.javawebstack.jobs.scheduler.interval.CronInterval;
 import org.javawebstack.jobs.serialization.JsonJobSerializer;
 import org.javawebstack.jobs.storage.inmemory.InMemoryJobStorage;
+import org.javawebstack.jobs.storage.model.JobInfo;
+import org.javawebstack.jobs.storage.model.RecurringJobInfo;
+import org.javawebstack.jobs.storage.model.RecurringJobQuery;
 import org.javawebstack.jobs.test.jobs.NoOpJob;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -28,10 +32,12 @@ public class JobWorkerTest {
 
     @Test
     public void testLifecycle() throws InterruptedException {
-        String queue = "test_ " + UUID.randomUUID();
+        String queue = "test_" + UUID.randomUUID();
         JobWorker worker = new JobWorker(jobs, queue, 1, 10);
         assertTrue(worker.isRunning());
         assertEquals(queue, worker.getQueue());
+        UUID recurrentJob = jobs.scheduleRecurrently(queue, "* * * * *", new NoOpJob());
+        assertEquals(1, jobs.getStorage().queryRecurringJobs(new RecurringJobQuery()).size());
         UUID firstJob = jobs.enqueue(queue, new NoOpJob());
         Thread.sleep(20); // Wait for 1 intervals + 10
         assertEquals(1, NoOpJob.getExecutions(firstJob));
@@ -44,6 +50,13 @@ public class JobWorkerTest {
         worker.start();
         Thread.sleep(20); // Wait for 1 interval + 10
         assertEquals(1, NoOpJob.getExecutions(secondJob));
+        RecurringJobInfo recurringJobInfo = jobs.getStorage().getRecurringJob(recurrentJob);
+        assertNotNull(recurringJobInfo);
+        assertNotNull(recurringJobInfo.getLastJobId());
+        UUID oldJobId = recurringJobInfo.getLastJobId();
+        Thread.sleep(120000);
+        recurringJobInfo = jobs.getStorage().getRecurringJob(recurrentJob);
+        assertNotEquals(oldJobId, recurringJobInfo.getLastJobId());
         worker.stop();
     }
 
@@ -55,6 +68,14 @@ public class JobWorkerTest {
         Thread.sleep(70); // Wait for enough time to ensure that the job could've executed twice
         assertEquals(1, NoOpJob.getExecutions(jobId));
         worker.stop();
+    }
+
+    @Test
+    public void testAlreadyRunningJobWorker() {
+        String queue = "test_ " + UUID.randomUUID();
+        JobWorker worker = new JobWorker(jobs, queue, 1, 10);
+        assertTrue(worker.isRunning());
+        assertThrows(IllegalStateException.class, worker::start);
     }
 
 }

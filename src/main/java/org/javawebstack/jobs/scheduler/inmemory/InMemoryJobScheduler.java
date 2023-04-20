@@ -18,6 +18,10 @@ public class InMemoryJobScheduler implements JobScheduler {
         q.offer(id);
     }
 
+    public void dequeue(UUID id) {
+        queues.values().forEach(q -> q.remove(id));
+    }
+
     public void schedule(String queue, Date at, UUID id) {
         schedule.add(new ScheduleEntry(id, queue, at));
     }

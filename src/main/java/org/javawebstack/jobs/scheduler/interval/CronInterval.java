@@ -15,8 +15,10 @@ import java.util.Date;
 public class CronInterval implements Interval {
 
     final ExecutionTime executionTime;
+    final String cron;
 
     public CronInterval(String cron) {
+        this.cron = cron;
         switch (cron) {
             case "@yearly":
             case "@annually":
@@ -45,6 +47,10 @@ public class CronInterval implements Interval {
                         .orElseThrow(() -> new RuntimeException("Unable to find next execution date"))
                         .toInstant()
         );
+    }
+
+    public String serialize() {
+        return cron;
     }
 
 }

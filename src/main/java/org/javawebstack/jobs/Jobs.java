@@ -6,10 +6,13 @@ import org.javawebstack.jobs.handler.JobExceptionHandler;
 import org.javawebstack.jobs.handler.retry.DefaultJobRetryHandler;
 import org.javawebstack.jobs.handler.retry.JobRetryHandler;
 import org.javawebstack.jobs.scheduler.JobScheduler;
+import org.javawebstack.jobs.scheduler.interval.CronInterval;
+import org.javawebstack.jobs.scheduler.interval.Interval;
 import org.javawebstack.jobs.serialization.JobSerializer;
 import org.javawebstack.jobs.storage.JobStorage;
 import org.javawebstack.jobs.storage.model.JobEvent;
 import org.javawebstack.jobs.storage.model.JobInfo;
+import org.javawebstack.jobs.storage.model.RecurringJobInfo;
 
 import java.util.ArrayList;
 import java.util.Date;
@@ -93,4 +96,26 @@ public class Jobs {
         storage.setJobStatus(id, JobStatus.SCHEDULED);
     }
 
+    public UUID scheduleRecurrently(String queue, String cron, Job job) {
+        return scheduleRecurrently(queue, cron, job.getClass().getName(), "{}");
+    }
+
+    public UUID scheduleRecurrently(String queue, String cron, String type, String payload) {
+        return scheduleRecurrently(queue, new CronInterval(cron), type, payload);
+    }
+
+    public UUID scheduleRecurrently(String queue, Interval interval, String type, String payload) {
+        RecurringJobInfo info = new RecurringJobInfo()
+                .setQueue(queue)
+                .setCron(interval)
+                .setType(type)
+                .setPayload(payload);
+        storage.createRecurringJob(info);
+        return info.getId();
+    }
+
+    public void dequeue(UUID id) {
+        scheduler.dequeue(id);
+        storage.setJobStatus(id, JobStatus.DELETED);
+    }
 }

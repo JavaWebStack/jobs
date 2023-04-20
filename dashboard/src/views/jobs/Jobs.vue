@@ -70,7 +70,7 @@ export default {
                 'SUCCESS': 'Succeeded',
                 'FAILED': 'Failed'
             },
-            tab: 'SCHEDULED',
+            tab: this.$route.query.status || 'SCHEDULED',
             jobs: [],
             jobCounts: {
                 SCHEDULED: 0,
@@ -104,6 +104,7 @@ export default {
         tab() {
             this.page = 1
             this.fetchJobs()
+            this.$router.replace({ query: { status: this.tab }})
         }
     },
     methods: {

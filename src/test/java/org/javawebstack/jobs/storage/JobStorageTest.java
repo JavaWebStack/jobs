@@ -2,6 +2,7 @@ package org.javawebstack.jobs.storage;
 
 import org.javawebstack.jobs.JobStatus;
 import org.javawebstack.jobs.LogLevel;
+import org.javawebstack.jobs.scheduler.interval.CronInterval;
 import org.javawebstack.jobs.storage.model.*;
 import org.javawebstack.jobs.test.jobs.JobWithData;
 import org.javawebstack.jobs.test.jobs.NoOpJob;
@@ -9,6 +10,8 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
@@ -41,6 +44,9 @@ public abstract class JobStorageTest {
             storage.createJob(info.clone().setStatus(status), NOOP_PAYLOAD);
         }
         storage.createJob(new JobInfo().setStatus(JobStatus.CREATED).setType(JobWithData.class.getName()), "{\"data\":\"a_string\"}");
+        storage.createRecurringJob(new RecurringJobInfo().setQueue(TEST_QUEUE).setType(NoOpJob.class.getName()).setPayload(NOOP_PAYLOAD).setCron(new CronInterval("@daily")));
+        storage.createRecurringJob(new RecurringJobInfo().setQueue(TEST_QUEUE).setType(NoOpJob.class.getName()).setPayload(NOOP_PAYLOAD).setCron(new CronInterval("@yearly")));
+        storage.createRecurringJob(new RecurringJobInfo().setQueue(TEST_QUEUE).setType(NoOpJob.class.getName()).setPayload(NOOP_PAYLOAD).setCron(new CronInterval("@monthly")));
     }
 
     @Test
@@ -89,6 +95,11 @@ public abstract class JobStorageTest {
     }
 
     @Test
+    public void testQueryAllRecurringJobs() {
+        assertTrue(storage.queryRecurringJobs(new RecurringJobQuery()).size() > 0);
+    }
+
+    @Test
     public void testQueryJobsBySingleStatus() {
         JobStatus expectedStatus = JobStatus.SUCCESS;
         List<JobInfo> jobs = storage.queryJobs(new JobQuery().setStatus(expectedStatus));
@@ -115,10 +126,27 @@ public abstract class JobStorageTest {
     }
 
     @Test
+    public void testQueryRecurringJobsByType() {
+        String expectedType = NoOpJob.class.getName();
+        List<RecurringJobInfo> jobs = storage.queryRecurringJobs(new RecurringJobQuery().setType(expectedType));
+        assertTrue(jobs.stream().anyMatch(j -> j.getType().equals(expectedType)));
+        assertTrue(jobs.stream().allMatch(j -> j.getType().equals(expectedType)));
+    }
+
+    @Test
     public void testQueryJobsWithOffsetAndLimit() {
         List<JobInfo> allJobs = storage.queryJobs(new JobQuery());
         JobInfo expectedFirstFiltered = allJobs.get(1);
         List<JobInfo> filteredJobs = storage.queryJobs(new JobQuery().setOffset(1).setLimit(3));
+        assertTrue(expectedFirstFiltered.getId().equals(filteredJobs.get(0).getId()));
+        assertTrue(filteredJobs.size() == 3);
+    }
+
+    @Test
+    public void testQueryRecurringJobsWithOffsetAndLimit() {
+        List<RecurringJobInfo> allJobs = storage.queryRecurringJobs(new RecurringJobQuery());
+        RecurringJobInfo expectedFirstFiltered = allJobs.get(1);
+        List<RecurringJobInfo> filteredJobs = storage.queryRecurringJobs(new RecurringJobQuery().setOffset(1).setLimit(3));
         assertTrue(expectedFirstFiltered.getId().equals(filteredJobs.get(0).getId()));
         assertTrue(filteredJobs.size() == 3);
     }
@@ -345,7 +373,7 @@ public abstract class JobStorageTest {
     }
 
     @Test
-    public void testSetWorkerOnline() throws InterruptedException {
+    public void testSetWorkerOnline() {
         JobWorkerInfo info = new JobWorkerInfo()
                 .setQueue(TEST_QUEUE)
                 .setOnline(true)
@@ -358,6 +386,65 @@ public abstract class JobStorageTest {
         JobWorkerInfo infoAfterSetOffline = storage.getWorker(info.getId());
         assertFalse(infoAfterSetOffline.isOnline());
         assertNotEquals(infoAfterCreate.getLastHeartbeatAt(), infoAfterSetOffline.getLastHeartbeatAt());
+    }
+
+    @Test
+    public void testCreateAndGetRecurringJob() {
+        RecurringJobInfo info = new RecurringJobInfo()
+                .setType(NoOpJob.class.getName())
+                .setQueue(TEST_QUEUE)
+                .setCron(new CronInterval("@daily"));
+        storage.createRecurringJob(info);
+        assertNotNull(storage.getRecurringJob(info.getId()));
+    }
+
+    @Test
+    public void testNonExistantRecurringJob() {
+        assertNull(storage.getRecurringJob(UUID.randomUUID()));
+    }
+
+    @Test
+    public void testRecurringJobValidation() {
+        RecurringJobInfo info = new RecurringJobInfo();
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> storage.createRecurringJob(info));
+        assertEquals("Recurring Job type is required", exception.getMessage());
+
+        info.setType(NoOpJob.class.getName());
+        exception = assertThrows(IllegalArgumentException.class, () -> storage.createRecurringJob(info));
+        assertEquals("Recurring Job cron is required", exception.getMessage());
+    }
+
+    @Test
+    public void testUpdateRecurringJob() {
+        RecurringJobInfo info = storage.queryRecurringJobs(new RecurringJobQuery()).get(0);
+        assertNotNull(info);
+        UUID newJobId = UUID.randomUUID();
+        Date newExecutionAt = new Date(1676912249000L);
+        storage.updateRecurringJob(info.getId(), newJobId, newExecutionAt);
+        info = storage.getRecurringJob(info.getId());
+        assertNotNull(info);
+        assertEquals(newJobId, info.getLastJobId());
+        assertEquals(newExecutionAt, info.getLastExecutionAt());
+    }
+
+    @Test
+    public void testDeleteRecurringJob() {
+        RecurringJobInfo info = new RecurringJobInfo().setQueue(TEST_QUEUE).setType(NoOpJob.class.getName()).setPayload(NOOP_PAYLOAD).setCron(new CronInterval("@monthly"));
+        storage.createRecurringJob(info);
+        assertNotNull(info.getId());
+        assertNotNull(storage.getRecurringJob(info.getId()));
+        storage.deleteRecurringJob(info.getId());
+        assertNull(storage.getRecurringJob(info.getId()));
+    }
+
+    @Test
+    public void testQueryRecurringJobSince() {
+        RecurringJobInfo past = new RecurringJobInfo().setQueue(TEST_QUEUE).setType(NoOpJob.class.getName()).setPayload(NOOP_PAYLOAD).setCron(new CronInterval("@monthly")).setLastExecutionAt(Date.from(Instant.now().minus(1, ChronoUnit.DAYS)));
+        RecurringJobInfo future = new RecurringJobInfo().setQueue(TEST_QUEUE).setType(NoOpJob.class.getName()).setPayload(NOOP_PAYLOAD).setCron(new CronInterval("@monthly")).setLastExecutionAt(Date.from(Instant.now().plus(1, ChronoUnit.DAYS)));
+        storage.createRecurringJob(past);
+        storage.createRecurringJob(future);
+        int totalCount = storage.queryRecurringJobs(new RecurringJobQuery()).size();
+        assertEquals(totalCount - 1, storage.queryRecurringJobs(new RecurringJobQuery().setSinceLastExecution(new Date())).size());
     }
 
 }

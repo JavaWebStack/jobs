@@ -9,10 +9,7 @@ import org.javawebstack.jobs.handler.retry.RetryReason;
 import org.javawebstack.jobs.scheduler.JobScheduler;
 import org.javawebstack.jobs.serialization.JobSerializer;
 import org.javawebstack.jobs.storage.JobStorage;
-import org.javawebstack.jobs.storage.model.JobEvent;
-import org.javawebstack.jobs.storage.model.JobInfo;
-import org.javawebstack.jobs.storage.model.JobLogEntry;
-import org.javawebstack.jobs.storage.model.JobWorkerInfo;
+import org.javawebstack.jobs.storage.model.*;
 import org.javawebstack.jobs.util.HostnameUtil;
 import org.javawebstack.jobs.util.JobExitException;
 import org.javawebstack.jobs.util.SyncTimer;
@@ -66,6 +63,7 @@ public class JobWorker {
         executor = (ThreadPoolExecutor) Executors.newFixedThreadPool(workerThreads);
         new Thread(new JobScheduling()).start();
         running = true;
+        Runtime.getRuntime().addShutdownHook(new Thread(this::stop));
     }
 
     private class JobScheduling implements Runnable {
@@ -100,14 +98,30 @@ public class JobWorker {
                     storage.setJobStatus(id, JobStatus.ENQUEUED);
                 });
             }, 0, pollInterval);
+            SyncTimer processRecurring = new SyncTimer(() -> {
+                storage.queryRecurringJobs(new RecurringJobQuery().setSinceLastExecution(new Date())).forEach(recurringJob -> {
+                    Date nextExecution = recurringJob.getCron().next(recurringJob.getLastExecutionAt());
+                    if (recurringJob.getLastJobId() == null) {
+                        UUID newId = jobs.schedule(recurringJob.getQueue(), nextExecution, recurringJob.getType(), recurringJob.getPayload());
+                        storage.updateRecurringJob(recurringJob.getId(), newId, nextExecution);
+                    } else {
+                        JobInfo info = storage.getJob(recurringJob.getLastJobId());
+                        if (info == null || info.getStatus() == JobStatus.SUCCESS || info.getStatus() == JobStatus.FAILED) { // processing is done at this point
+                            UUID newId = jobs.schedule(recurringJob.getQueue(), nextExecution, recurringJob.getType(), recurringJob.getPayload());
+                            storage.updateRecurringJob(recurringJob.getId(), newId, nextExecution);
+                        }
+                    }
+                });
+            }, 0, pollInterval);
             while (!stopRequested) {
                 boolean ticked = heartbeat.tick();
                 ticked = ticked || processSchedule.tick();
                 ticked = ticked || poll.tick();
+                ticked = ticked || processRecurring.tick();
                 if(!ticked) {
                     try {
                         Thread.sleep(50);
-                    } catch (InterruptedException e) {}
+                    } catch (InterruptedException ignored) {}
                 }
             }
             storage.setWorkerOnline(workerInfo.getId(), false);
