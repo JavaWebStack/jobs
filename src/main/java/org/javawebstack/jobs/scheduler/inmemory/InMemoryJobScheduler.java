@@ -49,7 +49,7 @@ public class InMemoryJobScheduler implements JobScheduler {
         return new ArrayList<>(queues.get(queue));
     }
 
-    public UUID poll(String queue) {
+    public synchronized UUID poll(String queue) {
         Queue<UUID> q = queues.get(queue);
         if(q == null)
             return null;

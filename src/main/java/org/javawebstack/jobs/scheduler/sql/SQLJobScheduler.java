@@ -60,7 +60,7 @@ public class SQLJobScheduler implements JobScheduler {
         );
     }
 
-    public UUID poll(String queue) {
+    public synchronized UUID poll(String queue) {
         Map<String, Object> e = SQLUtil.select(sql, table("queued_jobs"), "`id`,`job_id`", "WHERE `queue`=? ORDER BY `ord` LIMIT 1", queue).stream().findFirst().orElse(null);
         if(e == null)
             return null;

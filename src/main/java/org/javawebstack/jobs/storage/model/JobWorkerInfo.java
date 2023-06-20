@@ -46,4 +46,8 @@ public class JobWorkerInfo {
                 .setCreatedAt(createdAt);
     }
 
+    public boolean isOffline() {
+        return !online;
+    }
+
 }

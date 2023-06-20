@@ -11,6 +11,7 @@ import org.javawebstack.orm.wrapper.SQL;
 
 import java.sql.SQLException;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -186,7 +187,7 @@ public class SQLJobStorage implements JobStorage {
 
     public Map<JobStatus, Integer> getJobCountsByStatuses() {
         Map<JobStatus, Integer> counts = new HashMap<>();
-        List<Map<String, Object>> results = SQLUtil.select(sql, table("jobs"), "`status`,COUNT(`status`) AS `count`", null);
+        List<Map<String, Object>> results = SQLUtil.select(sql, table("jobs"), "`status`,COUNT(`status`) AS `count`", "GROUP BY `status`");
         for(JobStatus status : JobStatus.values()) {
             counts.put(status, results.stream().filter(r -> r.get("status") != null && r.get("status").equals(status.name())).map(r -> ((Long) r.get("count")).intValue()).findFirst().orElse(0));
         }
@@ -267,6 +268,17 @@ public class SQLJobStorage implements JobStorage {
 
     public List<JobWorkerInfo> queryWorkers() {
         return SQLUtil.select(sql, table("job_workers"), "`id`,`queue`,`hostname`,`threads`,`online`,`last_heartbeat_at`,`created_at`", null).stream().map(this::buildJobWorkerInfo).collect(Collectors.toList());
+    }
+
+    public void markOfflineWorkers() {
+        SQLUtil.update(sql, table("job_workers"), new MapBuilder<String, Object>()
+                .set("online", false)
+                .build()
+                , "`online`=? AND `last_heartbeat_at`<=?", true, Date.from(Instant.now().minus(1, ChronoUnit.MINUTES)));
+    }
+
+    public void deleteOfflineWorkers() {
+        SQLUtil.delete(sql, table("job_workers"), "`online`=? AND `last_heartbeat_at`<=?", false, Date.from(Instant.now().minus(1, ChronoUnit.MINUTES)));
     }
 
     public void setWorkerOnline(UUID id, boolean online) {

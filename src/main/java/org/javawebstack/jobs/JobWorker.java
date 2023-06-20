@@ -75,6 +75,8 @@ public class JobWorker {
             stopRequested = false;
             SyncTimer heartbeat = new SyncTimer(() -> {
                 storage.setWorkerOnline(workerInfo.getId(), true);
+                storage.markOfflineWorkers();
+                storage.deleteOfflineWorkers();
             }, 0, 15000);
             SyncTimer poll = new SyncTimer(() -> {
                 try {
@@ -216,11 +218,13 @@ public class JobWorker {
                             }
                         }
                     }
-                    if(jee.getRetryInSeconds() == -1 || !jee.isSuccess()) {
+
+                    if(jee.getRetryInSeconds() == null || !jee.isSuccess()) {
                         event = new JobEvent()
                                 .setJobId(id)
                                 .setType(jee.isSuccess() ? JobEvent.Type.SUCCESS : JobEvent.Type.FAILED);
                         storage.createEvent(event);
+                        storage.setJobStatus(id, jee.isSuccess() ? JobStatus.SUCCESS : JobStatus.FAILED);
                         if(jee.getMessage() != null) {
                             storage.createLogEntry(new JobLogEntry()
                                     .setEventId(event.getId())
@@ -229,7 +233,7 @@ public class JobWorker {
                             );
                         }
                     }
-                    if(jee.getRetryInSeconds() != -1) {
+                    if(jee.getRetryInSeconds() != null) {
                         if(jee.getRetryInSeconds() > 0) {
                             Date nextTry = Date.from(Instant.now().plusSeconds(jee.getRetryInSeconds()));
                             jobs.getScheduler().schedule(queue, nextTry, info.getId());

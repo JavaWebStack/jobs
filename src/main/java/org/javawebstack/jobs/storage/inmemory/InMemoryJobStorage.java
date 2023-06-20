@@ -5,6 +5,7 @@ import org.javawebstack.jobs.storage.JobStorage;
 import org.javawebstack.jobs.storage.model.*;
 
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -151,6 +152,17 @@ public class InMemoryJobStorage implements JobStorage {
 
     public List<JobWorkerInfo> queryWorkers() {
         return workers.stream().map(JobWorkerInfo::clone).collect(Collectors.toList());
+    }
+
+    public void markOfflineWorkers() {
+        workers.stream()
+                .filter(JobWorkerInfo::isOnline)
+                .filter(w -> w.getLastHeartbeatAt().before(Date.from(Instant.now().minus(1, ChronoUnit.MINUTES))))
+                .forEach(w -> w.setOnline(false));
+    }
+
+    public void deleteOfflineWorkers() {
+        workers.removeIf(w -> w.isOffline() && w.getLastHeartbeatAt().before(Date.from(Instant.now().minus(1, ChronoUnit.MINUTES))));
     }
 
     public void setWorkerOnline(UUID id, boolean online) {
