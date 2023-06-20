@@ -130,7 +130,7 @@ public class SQLJobStorage implements JobStorage {
                 params.addAll(Arrays.asList(query.getStatus()));
             }
         }
-        sb.append(" ORDER BY `ord`");
+        sb.append(" ORDER BY `ord` DESC");
         if(query.getLimit() != -1 || query.getOffset() != -1) {
             int offset = query.getOffset();
             if(offset < 0)
