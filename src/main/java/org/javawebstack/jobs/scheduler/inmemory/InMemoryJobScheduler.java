@@ -40,7 +40,17 @@ public class InMemoryJobScheduler implements JobScheduler {
     }
 
     public List<JobScheduleEntry> getScheduleEntries(String queue) {
-        return schedule.stream().filter(e -> e.queue.equals(queue)).map(e -> new JobScheduleEntry().setJobId(e.id).setAt(e.at)).collect(Collectors.toList());
+        return schedule.stream().filter(e -> e.queue.equals(queue)).map(this::makeJobScheduleEntry).collect(Collectors.toList());
+    }
+
+    public List<JobScheduleEntry> getScheduleEntries(List<UUID> jobIds) {
+        return schedule.stream().filter(e -> jobIds.contains(e.id)).map(this::makeJobScheduleEntry).collect(Collectors.toList());
+    }
+
+    private JobScheduleEntry makeJobScheduleEntry(ScheduleEntry e) {
+        return new JobScheduleEntry()
+                .setJobId(e.id)
+                .setAt(e.at);
     }
 
     public List<UUID> getQueueEntries(String queue) {

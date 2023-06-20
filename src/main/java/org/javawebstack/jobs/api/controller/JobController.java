@@ -13,11 +13,15 @@ import org.javawebstack.httpserver.router.annotation.verbs.Post;
 import org.javawebstack.jobs.JobStatus;
 import org.javawebstack.jobs.Jobs;
 import org.javawebstack.jobs.api.request.CreateJobRequest;
+import org.javawebstack.jobs.api.response.JobResponse;
 import org.javawebstack.jobs.api.response.Response;
+import org.javawebstack.jobs.scheduler.model.JobScheduleEntry;
 import org.javawebstack.jobs.storage.model.JobInfo;
 import org.javawebstack.jobs.storage.model.JobQuery;
 
+import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 @PathPrefix("api/jobs")
@@ -37,7 +41,17 @@ public class JobController extends Controller {
         if(exchange.getQueryParameters().has("status")) {
             query.setStatus(Stream.of(exchange.query("status").split(",")).map(JobStatus::valueOf).toArray(JobStatus[]::new));
         }
-        return Response.success().setData(storage.queryJobs(query));
+
+        List<JobInfo> jobList = storage.queryJobs(query);
+        List<JobScheduleEntry> schedules = scheduler.getScheduleEntries(jobList.stream().map(JobInfo::getId).collect(Collectors.toList()));
+        List<JobResponse> responses = jobList.stream()
+                .map(j -> {
+                    JobScheduleEntry schedule = schedules.stream().filter(s -> s.getJobId().equals(j.getId())).findFirst().orElse(null);
+                    return new JobResponse(j, schedule);
+                })
+                .collect(Collectors.toList());
+
+        return Response.success().setData(responses);
     }
 
     @Post

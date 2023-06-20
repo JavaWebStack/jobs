@@ -83,6 +83,14 @@ public class SQLJobScheduler implements JobScheduler {
         return SQLUtil.select(sql, table("scheduled_jobs"), "`job_id`,`scheduled_at`", "WHERE `queue`=? ORDER BY `ord`", queue).stream().map(this::buildScheduleEntry).collect(Collectors.toList());
     }
 
+    public List<JobScheduleEntry> getScheduleEntries(List<UUID> jobIds) {
+        if (jobIds == null || jobIds.isEmpty())
+            return Collections.emptyList();
+
+        String whereIn = jobIds.stream().map(UUID::toString).map(s -> "\"" + s + "\"").collect(Collectors.joining(","));
+        return SQLUtil.select(sql, table("scheduled_jobs"), "`job_id`,`scheduled_at`", "WHERE `job_id` IN (" + whereIn + ") ORDER BY `ord`").stream().map(this::buildScheduleEntry).collect(Collectors.toList());
+    }
+
     public List<UUID> getQueueEntries(String queue) {
         return SQLUtil.select(sql, table("queued_jobs"), "`job_id`", "WHERE `queue`=? ORDER BY `ord`", queue).stream().map(e -> UUID.fromString((String) e.get("job_id"))).collect(Collectors.toList());
     }

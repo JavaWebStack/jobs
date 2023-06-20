@@ -16,7 +16,8 @@
                 { key: 'bulk', text: '' },
                 { key: 'id', text: 'ID' },
                 { key: 'type', text: 'Type' },
-                { key: 'created_at', text: 'Created At' }
+                { key: 'created_at', text: 'Created At' },
+                ...(tab === 'SCHEDULED' ? [{ key: 'scheduled_at', text: 'Scheduled At' }] : [])
             ]" :items="jobs">
                 <template v-slot:[`header.bulk`]>
                     <input type="checkbox" class="form-check" v-model="checkAll"

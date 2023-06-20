@@ -14,6 +14,7 @@ public interface JobScheduler {
     UUID poll(String queue);
     List<UUID> processSchedule(String queue);
     List<JobScheduleEntry> getScheduleEntries(String queue);
+    List<JobScheduleEntry> getScheduleEntries(List<UUID> jobIds);
     List<UUID> getQueueEntries(String queue);
 
 }
