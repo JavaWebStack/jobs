@@ -97,7 +97,7 @@ public class Jobs {
     }
 
     public UUID scheduleRecurrently(String queue, String cron, Job job) {
-        return scheduleRecurrently(queue, cron, job.getClass().getName(), "{}");
+        return scheduleRecurrently(queue, cron, job.getClass().getName(), serializer.serialize(job));
     }
 
     public UUID scheduleRecurrently(String queue, String cron, String type, String payload) {
