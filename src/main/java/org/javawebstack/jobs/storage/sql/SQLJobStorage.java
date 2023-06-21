@@ -58,6 +58,10 @@ public class SQLJobStorage implements JobStorage {
     public void createRecurringJob(RecurringJobInfo info) {
         JobStorage.super.createRecurringJob(info);
 
+        List<RecurringJobInfo> recurringJobs = queryRecurringJobs(new RecurringJobQuery().setQueue(info.getQueue()).setType(info.getType()));
+        if (recurringJobs.stream().anyMatch(r -> r.getPayload().equals(info.getPayload()) && r.getCron().equals(info.getCron())))
+            return;
+
         SQLUtil.insert(sql, table("recurring_jobs"), new MapBuilder<String, Object>()
                 .set("id", info.getId())
                 .set("last_job_id", info.getLastJobId())

@@ -53,4 +53,14 @@ public class CronInterval implements Interval {
         return cron;
     }
 
+    public boolean equals(Object obj) {
+        if (obj == null)
+            return false;
+        if (obj instanceof String)
+            return obj.equals(cron);
+        if (obj instanceof CronInterval)
+            return ((CronInterval) obj).cron.equals(cron);
+
+        return false;
+    }
 }
