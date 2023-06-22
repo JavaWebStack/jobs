@@ -101,25 +101,29 @@ public class JobWorker {
                 });
             }, 0, pollInterval);
             SyncTimer processRecurring = new SyncTimer(() -> {
-                storage.queryRecurringJobs(new RecurringJobQuery().setSinceLastExecution(new Date())).forEach(recurringJob -> {
-                    Date nextExecution = recurringJob.getCron().next(recurringJob.getLastExecutionAt());
-                    if (recurringJob.getLastJobId() == null) {
-                        UUID newId = jobs.schedule(recurringJob.getQueue(), nextExecution, recurringJob.getType(), recurringJob.getPayload());
-                        storage.updateRecurringJob(recurringJob.getId(), newId, nextExecution);
-                    } else {
-                        JobInfo info = storage.getJob(recurringJob.getLastJobId());
-                        if (info == null || info.getStatus() == JobStatus.SUCCESS || info.getStatus() == JobStatus.FAILED) { // processing is done at this point
+                try {
+                    storage.queryRecurringJobs(new RecurringJobQuery().setSinceLastExecution(new Date()).setQueue(queue)).forEach(recurringJob -> {
+                        Date nextExecution = recurringJob.getCron().next(recurringJob.getLastExecutionAt());
+                        if (recurringJob.getLastJobId() == null) {
                             UUID newId = jobs.schedule(recurringJob.getQueue(), nextExecution, recurringJob.getType(), recurringJob.getPayload());
                             storage.updateRecurringJob(recurringJob.getId(), newId, nextExecution);
+                        } else {
+                            JobInfo info = storage.getJob(recurringJob.getLastJobId());
+                            if (info == null || info.getStatus() == JobStatus.SUCCESS || info.getStatus() == JobStatus.FAILED) { // processing is done at this point
+                                UUID newId = jobs.schedule(recurringJob.getQueue(), nextExecution, recurringJob.getType(), recurringJob.getPayload());
+                                storage.updateRecurringJob(recurringJob.getId(), newId, nextExecution);
+                            }
                         }
-                    }
-                });
+                    });
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
             }, 0, pollInterval);
             while (!stopRequested) {
                 boolean ticked = heartbeat.tick();
-                ticked = ticked || processSchedule.tick();
-                ticked = ticked || poll.tick();
-                ticked = ticked || processRecurring.tick();
+                ticked = ticked && processSchedule.tick();
+                ticked = ticked && poll.tick();
+                ticked = ticked && processRecurring.tick();
                 if(!ticked) {
                     try {
                         Thread.sleep(50);
@@ -219,7 +223,7 @@ public class JobWorker {
                         }
                     }
 
-                    if(jee.getRetryInSeconds() == null || !jee.isSuccess()) {
+                    if(jee.getRetryInSeconds() == null && !jee.isSuccess()) {
                         event = new JobEvent()
                                 .setJobId(id)
                                 .setType(jee.isSuccess() ? JobEvent.Type.SUCCESS : JobEvent.Type.FAILED);
