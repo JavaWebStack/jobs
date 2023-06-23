@@ -27,10 +27,13 @@ public class InMemoryJobStorage implements JobStorage {
         jobPayloads.put(info.getId(), payload);
     }
 
-    public void createRecurringJob(RecurringJobInfo info) {
+    public boolean createRecurringJob(RecurringJobInfo info) {
         JobStorage.super.createRecurringJob(info);
 
-        recurringJobs.add(info.clone());
+        if (recurringJobs.stream().anyMatch(r -> r.getType().equals(info.getType()) && r.getQueue().equals(info.getQueue()) && r.getPayload().equals(info.getPayload()) && r.getCron().equals(info.getCron())))
+            return false;
+
+        return recurringJobs.add(info.clone());
     }
 
     public JobInfo getJob(UUID id) {
@@ -87,10 +90,10 @@ public class InMemoryJobStorage implements JobStorage {
         if (query.getQueue() != null)
             stream = stream.filter(j -> j.getQueue().equals(query.getQueue()));
         if (query.getSinceLastExecution() != null)
-            stream = stream.filter(j -> j.getLastExecutionAt() == null || j.getLastExecutionAt().before(query.getSinceLastExecution()));
+            stream = stream.filter(j -> j.getLastExecutionAt() != null && j.getLastExecutionAt().before(query.getSinceLastExecution()));
         if(query.getType() != null)
             stream = stream.filter(j -> j.getType().equals(query.getType()));
-        if(query.getOffset() != -1)
+        if(query.getOffset() != 0)
             stream = stream.skip(query.getOffset());
         if(query.getLimit() != -1)
             stream = stream.limit(query.getLimit());

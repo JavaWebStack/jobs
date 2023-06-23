@@ -8,6 +8,7 @@ import org.javawebstack.jobs.test.TestUtil;
 import org.javawebstack.jobs.test.precondition.SQLDatabaseAvailable;
 import org.javawebstack.orm.wrapper.SQL;
 import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 @ExtendWith(SQLDatabaseAvailable.class)
@@ -21,7 +22,7 @@ public class SQLJobStorageTest extends JobStorageTest {
         return new SQLJobStorage(sql, null);
     }
 
-    @AfterAll
+    @AfterEach
     public void cleanup() {
         TestUtil.purgeStorageDatabase(sql);
     }

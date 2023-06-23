@@ -11,6 +11,7 @@ import org.javawebstack.jobs.storage.model.JobInfo;
 import org.javawebstack.jobs.storage.model.RecurringJobInfo;
 import org.javawebstack.jobs.test.jobs.NoOpJob;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 
@@ -28,7 +29,7 @@ public class JobsTest {
     JobScheduler scheduler;
     Jobs jobs;
 
-    @BeforeAll
+    @BeforeEach
     public void up() {
         storage = new InMemoryJobStorage();
         scheduler = new InMemoryJobScheduler();
@@ -83,13 +84,13 @@ public class JobsTest {
 
     @Test
     public void testScheduleRecurrentlyNoPayload() {
-        UUID id = jobs.scheduleRecurrently(TEST_QUEUE, "@daily", new NoOpJob());
+        UUID id = jobs.scheduleRecurrently(TEST_QUEUE, "*/5 * * * *", new NoOpJob());
         assertRecurrentlyScheduled(id);
     }
 
     @Test
     public void testScheduleRecurrently() {
-        UUID id = jobs.scheduleRecurrently(TEST_QUEUE, "@daily", NoOpJob.class.getName(), "{}");
+        UUID id = jobs.scheduleRecurrently(TEST_QUEUE, "*/5 * * * *", NoOpJob.class.getName(), "{}");
         assertRecurrentlyScheduled(id);
     }
 

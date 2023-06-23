@@ -55,12 +55,12 @@ public class SQLJobStorage implements JobStorage {
         );
     }
 
-    public void createRecurringJob(RecurringJobInfo info) {
+    public boolean createRecurringJob(RecurringJobInfo info) {
         JobStorage.super.createRecurringJob(info);
 
         List<RecurringJobInfo> recurringJobs = queryRecurringJobs(new RecurringJobQuery().setQueue(info.getQueue()).setType(info.getType()));
         if (recurringJobs.stream().anyMatch(r -> r.getPayload().equals(info.getPayload()) && r.getCron().equals(info.getCron())))
-            return;
+            return false;
 
         SQLUtil.insert(sql, table("recurring_jobs"), new MapBuilder<String, Object>()
                 .set("id", info.getId())
@@ -74,6 +74,8 @@ public class SQLJobStorage implements JobStorage {
                 .set("last_execution_at", info.getLastExecutionAt())
                 .build()
         );
+
+        return true;
     }
 
     public JobInfo getJob(UUID id) {
@@ -244,7 +246,7 @@ public class SQLJobStorage implements JobStorage {
     }
 
     public List<JobLogEntry> queryLogEntries(UUID eventId) {
-        return SQLUtil.select(sql, table("job_log_entries"), "`id`,`event_id`,`level`,`message`,`created_at`", "WHERE `event_id`=? ORDER BY `ord`", eventId).stream().map(this::buildJobLogEntry).collect(Collectors.toList());
+        return SQLUtil.select(sql, table("job_log_entries"), "`id`,`event_id`,`level`,`message`,`created_at`", "WHERE `event_id`=? ORDER BY `ord` ASC", eventId).stream().map(this::buildJobLogEntry).collect(Collectors.toList());
     }
 
     public void createWorker(JobWorkerInfo info) {

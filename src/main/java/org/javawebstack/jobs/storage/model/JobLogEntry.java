@@ -2,6 +2,7 @@ package org.javawebstack.jobs.storage.model;
 
 import lombok.Getter;
 import lombok.Setter;
+import lombok.ToString;
 import org.javawebstack.jobs.LogLevel;
 
 import java.time.Instant;
@@ -10,6 +11,7 @@ import java.util.UUID;
 
 @Getter
 @Setter
+@ToString
 public class JobLogEntry {
 
     UUID id;

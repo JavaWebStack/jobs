@@ -14,9 +14,11 @@ public interface JobStorage {
         info.checkRequired();
         info.sanitize();
     }
-    default void createRecurringJob(RecurringJobInfo info) {
+    default boolean createRecurringJob(RecurringJobInfo info) {
         info.checkRequired();
         info.sanitize();
+
+        return false;
     }
     JobInfo getJob(UUID id);
     RecurringJobInfo getRecurringJob(UUID id);
