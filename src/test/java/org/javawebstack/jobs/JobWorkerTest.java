@@ -8,10 +8,7 @@ import org.javawebstack.jobs.storage.model.JobInfo;
 import org.javawebstack.jobs.storage.model.RecurringJobInfo;
 import org.javawebstack.jobs.storage.model.RecurringJobQuery;
 import org.javawebstack.jobs.test.jobs.NoOpJob;
-import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.TestInstance;
+import org.junit.jupiter.api.*;
 
 import java.util.UUID;
 
@@ -40,7 +37,7 @@ public class JobWorkerTest {
         UUID recurrentJob = jobs.scheduleRecurrently(queue, "* * * * *", new NoOpJob());
         assertEquals(1, jobs.getStorage().queryRecurringJobs(new RecurringJobQuery()).size());
         UUID firstJob = jobs.enqueue(queue, new NoOpJob());
-        Thread.sleep(20); // Wait for 1 intervals + 10
+        Thread.sleep(40); // Wait for 1 intervals + 10
         assertEquals(1, NoOpJob.getExecutions(firstJob));
         Thread.sleep(5000);
         RecurringJobInfo recurringJobInfo = jobs.getStorage().getRecurringJob(recurrentJob);

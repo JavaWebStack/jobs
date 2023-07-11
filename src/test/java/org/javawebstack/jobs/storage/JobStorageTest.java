@@ -228,6 +228,11 @@ public abstract class JobStorageTest {
                 .setJobId(job.getId())
                 .setType(JobEvent.Type.SCHEDULED);
         storage.createEvent(firstEvent);
+        try {
+            Thread.sleep(5);
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        }
         JobEvent secondEvent = new JobEvent()
                 .setJobId(job.getId())
                 .setType(JobEvent.Type.ENQUEUED);

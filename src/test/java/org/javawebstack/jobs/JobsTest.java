@@ -94,6 +94,15 @@ public class JobsTest {
         assertRecurrentlyScheduled(id);
     }
 
+    @Test
+    public void successfulDequeue() {
+        int oldSize = jobs.getScheduler().getQueueEntries(TEST_QUEUE).size();
+        UUID id = jobs.enqueue(TEST_QUEUE, NoOpJob.class.getName(), "{}");
+        assertEquals(oldSize + 1, jobs.getScheduler().getQueueEntries(TEST_QUEUE).size());
+        jobs.dequeue(id);
+        assertEquals(oldSize, jobs.getScheduler().getQueueEntries(TEST_QUEUE).size());
+    }
+
     private void assertScheduled(UUID id, Date at) {
         assertNotNull(id);
         JobInfo info = storage.getJob(id);
