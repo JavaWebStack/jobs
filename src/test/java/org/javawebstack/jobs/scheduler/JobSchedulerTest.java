@@ -6,9 +6,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 
 import java.time.Instant;
-import java.util.Date;
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -77,6 +75,14 @@ public abstract class JobSchedulerTest {
         scheduler.enqueue(queue, jobId);
         assertEquals(jobId, scheduler.poll(queue));
         assertNull(scheduler.poll(queue));
+    }
+
+    @Test
+    public void testGetScheduleEntries() {
+        assertEquals(0, scheduler.getScheduleEntries(new ArrayList<>()).size());
+        UUID testJobId = UUID.randomUUID();
+        scheduler.schedule(TEST_QUEUE, new Date(), testJobId);
+        assertEquals(1, scheduler.getScheduleEntries(Collections.singletonList(testJobId)).size());
     }
 
 }
