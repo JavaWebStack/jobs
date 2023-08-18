@@ -49,7 +49,7 @@
         <dependency>
             <groupId>org.javawebstack</groupId>
             <artifactId>http-server</artifactId>
-            <version>1.0.1</version>
+            <version>1.0.3-SNAPSHOT</version>
         </dependency>
         <dependency>
             <groupId>org.javawebstack</groupId>

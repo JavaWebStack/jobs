@@ -1,8 +1,8 @@
 package org.javawebstack.jobs.api;
 
 import lombok.Getter;
+import org.javawebstack.httpserver.HTTPMethod;
 import org.javawebstack.httpserver.HTTPServer;
-import org.javawebstack.httpserver.helper.HttpMethod;
 import org.javawebstack.httpserver.transformer.response.JsonResponseTransformer;
 import org.javawebstack.jobs.Jobs;
 import org.javawebstack.jobs.api.auth.AuthProvider;
@@ -51,7 +51,7 @@ public class JobApi {
             ex.header("Access-Control-Allow-Origin", "*");
             ex.header("Access-Control-Allow-Methods", "*");
             ex.header("Access-Control-Allow-Headers", "*");
-            if(ex.getMethod() == HttpMethod.OPTIONS) {
+            if(ex.getMethod() == HTTPMethod.OPTIONS) {
                 ex.close();
                 return true;
             }
