@@ -7,7 +7,8 @@ import org.javawebstack.jobs.storage.model.*;
 import org.javawebstack.jobs.storage.JobStorage;
 import org.javawebstack.jobs.util.MapBuilder;
 import org.javawebstack.jobs.util.SQLUtil;
-import org.javawebstack.orm.wrapper.SQL;
+import org.javawebstack.orm.connection.pool.PooledSQL;
+import org.javawebstack.orm.connection.pool.SQLPool;
 
 import java.sql.SQLException;
 import java.time.Instant;
@@ -18,15 +19,15 @@ import java.util.stream.Stream;
 
 public class SQLJobStorage implements JobStorage {
 
-    final SQL sql;
+    final SQLPool pool;
     final String tablePrefix;
 
-    public SQLJobStorage(SQL sql, String tablePrefix) {
+    public SQLJobStorage(SQLPool pool, String tablePrefix) {
         if(tablePrefix == null)
             tablePrefix = "";
-        this.sql = sql;
+        this.pool = pool;
         this.tablePrefix = tablePrefix;
-        try {
+        try(PooledSQL sql = pool.get()) {
             sql.write("CREATE TABLE IF NOT EXISTS `" + table("jobs") + "` (`id` VARCHAR(36), `ord` BIGINT, `status` ENUM('CREATED', 'SCHEDULED', 'ENQUEUED', 'PROCESSING', 'SUCCESS', 'FAILED', 'DELETED'), `type` VARCHAR(100) NOT NULL, `payload` LONGTEXT NOT NULL, `created_at` TIMESTAMP NOT NULL, PRIMARY KEY(`id`));");
             sql.write("CREATE TABLE IF NOT EXISTS `" + table("job_events") + "` (`id` VARCHAR(36), `ord` BIGINT, `job_id` VARCHAR(36) NOT NULL, `type` ENUM('SCHEDULED','ENQUEUED','PROCESSING','FAILED','SUCCESS') NOT NULL, `created_at` TIMESTAMP NOT NULL, PRIMARY KEY(`id`));");
             sql.write("CREATE TABLE IF NOT EXISTS `" + table("job_log_entries") + "` (`id` VARCHAR(36), `ord` BIGINT, `event_id` VARCHAR(36) NOT NULL,`level` ENUM('INFO','WARNING','ERROR') NOT NULL, `message` LONGTEXT NOT NULL, `created_at` TIMESTAMP NOT NULL, PRIMARY KEY(`id`));");
@@ -44,15 +45,17 @@ public class SQLJobStorage implements JobStorage {
     public void createJob(JobInfo info, String payload) {
         JobStorage.super.createJob(info, payload);
 
-        SQLUtil.insert(sql, table("jobs"), new MapBuilder<String, Object>()
-                .set("id", info.getId())
-                .set("ord", System.currentTimeMillis())
-                .set("status", info.getStatus())
-                .set("type", info.getType())
-                .set("payload", payload)
-                .set("created_at", info.getCreatedAt())
-                .build()
-        );
+        try(PooledSQL sql = pool.get()) {
+            SQLUtil.insert(sql, table("jobs"), new MapBuilder<String, Object>()
+                    .set("id", info.getId())
+                    .set("ord", System.currentTimeMillis())
+                    .set("status", info.getStatus())
+                    .set("type", info.getType())
+                    .set("payload", payload)
+                    .set("created_at", info.getCreatedAt())
+                    .build()
+            );
+        }
     }
 
     public boolean createRecurringJob(RecurringJobInfo info) {
@@ -62,58 +65,72 @@ public class SQLJobStorage implements JobStorage {
         if (recurringJobs.stream().anyMatch(r -> r.getPayload().equals(info.getPayload()) && r.getCron().equals(info.getCron())))
             return false;
 
-        SQLUtil.insert(sql, table("recurring_jobs"), new MapBuilder<String, Object>()
-                .set("id", info.getId())
-                .set("last_job_id", info.getLastJobId())
-                .set("queue", info.getQueue())
-                .set("payload", info.getPayload())
-                .set("type", info.getType())
-                .set("ord", System.currentTimeMillis())
-                .set("cron_expression", info.getCron().serialize())
-                .set("created_at", new Date())
-                .set("last_execution_at", info.getLastExecutionAt())
-                .build()
-        );
+        try(PooledSQL sql = pool.get()) {
+            SQLUtil.insert(sql, table("recurring_jobs"), new MapBuilder<String, Object>()
+                    .set("id", info.getId())
+                    .set("last_job_id", info.getLastJobId())
+                    .set("queue", info.getQueue())
+                    .set("payload", info.getPayload())
+                    .set("type", info.getType())
+                    .set("ord", System.currentTimeMillis())
+                    .set("cron_expression", info.getCron().serialize())
+                    .set("created_at", new Date())
+                    .set("last_execution_at", info.getLastExecutionAt())
+                    .build()
+            );
+        }
 
         return true;
     }
 
     public JobInfo getJob(UUID id) {
-        List<Map<String, Object>> results = SQLUtil.select(sql, table("jobs"), "`id`,`status`,`type`,`created_at`", "WHERE `id`=? LIMIT 1", id);
-        if(results.size() == 0)
-            return null;
-        return buildJobInfo(results.get(0));
+        try(PooledSQL sql = pool.get()) {
+            List<Map<String, Object>> results = SQLUtil.select(sql, table("jobs"), "`id`,`status`,`type`,`created_at`", "WHERE `id`=? LIMIT 1", id);
+            if(results.isEmpty())
+                return null;
+            return buildJobInfo(results.get(0));
+        }
     }
 
     public RecurringJobInfo getRecurringJob(UUID id) {
-        List<Map<String, Object>> results = SQLUtil.select(sql, table("recurring_jobs"), "`id`,`last_job_id`,`queue`,`payload`,`type`,`cron_expression`,`last_execution_at`,`created_at`", "WHERE `id`=? LIMIT 1", id);
-        if (results.size() == 0)
-            return null;
-        return buildRecurringJobInfo(results.get(0));
+        try(PooledSQL sql = pool.get()) {
+            List<Map<String, Object>> results = SQLUtil.select(sql, table("recurring_jobs"), "`id`,`last_job_id`,`queue`,`payload`,`type`,`cron_expression`,`last_execution_at`,`created_at`", "WHERE `id`=? LIMIT 1", id);
+            if (results.isEmpty())
+                return null;
+            return buildRecurringJobInfo(results.get(0));
+        }
     }
 
     public String getJobPayload(UUID id) {
-        List<Map<String, Object>> results = SQLUtil.select(sql, table("jobs"), "`payload`", "WHERE `id`=? LIMIT 1", id);
-        if(results.size() == 0)
-            return null;
-        return (String) results.get(0).get("payload");
+        try(PooledSQL sql = pool.get()) {
+            List<Map<String, Object>> results = SQLUtil.select(sql, table("jobs"), "`payload`", "WHERE `id`=? LIMIT 1", id);
+            if(results.isEmpty())
+                return null;
+            return (String) results.get(0).get("payload");
+        }
     }
 
     public void setJobStatus(UUID id, JobStatus status) {
-        SQLUtil.update(sql, table("jobs"), new MapBuilder<String, Object>()
-                .set("status", status)
-                .build()
-                ,"`id`=?", id);
+        try(PooledSQL sql = pool.get()) {
+            SQLUtil.update(sql, table("jobs"), new MapBuilder<String, Object>()
+                            .set("status", status)
+                            .build()
+                    ,"`id`=?", id);
+        }
     }
 
     public void deleteJob(UUID id) {
-        SQLUtil.delete(sql, table("job_log_entries"), "EXISTS(SELECT `id` FROM `" + table("job_events") + "` WHERE `" + table("job_events") + "`.id=`" + table("job_log_entries") + "`.event_id AND `" + table("job_events") + "`.job_id=?)", id);
-        SQLUtil.delete(sql, table("job_events"), "`job_id`=?", id);
-        SQLUtil.delete(sql, table("jobs"), "`id`=?", id);
+        try(PooledSQL sql = pool.get()) {
+            SQLUtil.delete(sql, table("job_log_entries"), "EXISTS(SELECT `id` FROM `" + table("job_events") + "` WHERE `" + table("job_events") + "`.id=`" + table("job_log_entries") + "`.event_id AND `" + table("job_events") + "`.job_id=?)", id);
+            SQLUtil.delete(sql, table("job_events"), "`job_id`=?", id);
+            SQLUtil.delete(sql, table("jobs"), "`id`=?", id);
+        }
     }
 
     public void deleteRecurringJob(UUID id) {
-        SQLUtil.delete(sql, table("recurring_jobs"), "`id`=?", id);
+        try(PooledSQL sql = pool.get()) {
+            SQLUtil.delete(sql, table("recurring_jobs"), "`id`=?", id);
+        }
     }
 
     public List<JobInfo> queryJobs(JobQuery query) {
@@ -146,10 +163,12 @@ public class SQLJobStorage implements JobStorage {
                 limit = Integer.MAX_VALUE;
             sb.append(" LIMIT ").append(offset).append(",").append(limit);
         }
-        return SQLUtil.select(sql, table("jobs"), "`id`,`status`,`type`,`created_at`", sb.toString().trim(), params.toArray())
-                .stream()
-                .map(this::buildJobInfo)
-                .collect(Collectors.toList());
+        try(PooledSQL sql = pool.get()) {
+            return SQLUtil.select(sql, table("jobs"), "`id`,`status`,`type`,`created_at`", sb.toString().trim(), params.toArray())
+                    .stream()
+                    .map(this::buildJobInfo)
+                    .collect(Collectors.toList());
+        }
     }
 
     public List<RecurringJobInfo> queryRecurringJobs(RecurringJobQuery query) {
@@ -185,122 +204,152 @@ public class SQLJobStorage implements JobStorage {
                 limit = Integer.MAX_VALUE;
             sb.append(" LIMIT ").append(offset).append(",").append(limit);
         }
-        return SQLUtil.select(sql, table("recurring_jobs"), "`id`,`last_job_id`,`queue`,`payload`,`type`,`cron_expression`,`last_execution_at`,`created_at`", sb.toString().trim(), params.toArray())
-                .stream()
-                .map(this::buildRecurringJobInfo)
-                .collect(Collectors.toList());
+        try(PooledSQL sql = pool.get()) {
+            return SQLUtil.select(sql, table("recurring_jobs"), "`id`,`last_job_id`,`queue`,`payload`,`type`,`cron_expression`,`last_execution_at`,`created_at`", sb.toString().trim(), params.toArray())
+                    .stream()
+                    .map(this::buildRecurringJobInfo)
+                    .collect(Collectors.toList());
+        }
     }
 
     public Map<JobStatus, Integer> getJobCountsByStatuses() {
         Map<JobStatus, Integer> counts = new HashMap<>();
-        List<Map<String, Object>> results = SQLUtil.select(sql, table("jobs"), "`status`,COUNT(`status`) AS `count`", "GROUP BY `status`");
-        for(JobStatus status : JobStatus.values()) {
-            counts.put(status, results.stream().filter(r -> r.get("status") != null && r.get("status").equals(status.name())).map(r -> ((Long) r.get("count")).intValue()).findFirst().orElse(0));
+        try(PooledSQL sql = pool.get()) {
+            List<Map<String, Object>> results = SQLUtil.select(sql, table("jobs"), "`status`,COUNT(`status`) AS `count`", "GROUP BY `status`");
+            for(JobStatus status : JobStatus.values()) {
+                counts.put(status, results.stream().filter(r -> r.get("status") != null && r.get("status").equals(status.name())).map(r -> ((Long) r.get("count")).intValue()).findFirst().orElse(0));
+            }
+            return counts;
         }
-        return counts;
     }
 
     public void createEvent(JobEvent event) {
         event.checkRequired();
         event.sanitize();
-        SQLUtil.insert(sql, table("job_events"), new MapBuilder<String, Object>()
-                .set("id", event.getId())
-                .set("ord", System.currentTimeMillis())
-                .set("job_id", event.getJobId())
-                .set("type", event.getType())
-                .set("created_at", event.getCreatedAt())
-                .build()
-        );
+        try(PooledSQL sql = pool.get()) {
+            SQLUtil.insert(sql, table("job_events"), new MapBuilder<String, Object>()
+                    .set("id", event.getId())
+                    .set("ord", System.currentTimeMillis())
+                    .set("job_id", event.getJobId())
+                    .set("type", event.getType())
+                    .set("created_at", event.getCreatedAt())
+                    .build()
+            );
+        }
     }
 
     public JobEvent getEvent(UUID id) {
-        List<Map<String, Object>> results = SQLUtil.select(sql, table("job_events"), "`id`,`job_id`,`type`,`created_at`", "WHERE `id`=? LIMIT 1", id);
-        if(results.size() == 0)
-            return null;
-        return buildJobEvent(results.get(0));
+        try(PooledSQL sql = pool.get()) {
+            List<Map<String, Object>> results = SQLUtil.select(sql, table("job_events"), "`id`,`job_id`,`type`,`created_at`", "WHERE `id`=? LIMIT 1", id);
+            if(results.size() == 0)
+                return null;
+            return buildJobEvent(results.get(0));
+        }
     }
 
     public List<JobEvent> queryEvents(UUID jobId) {
-        return SQLUtil.select(sql, table("job_events"), "`id`,`job_id`,`type`,`created_at`", "WHERE `job_id`=? ORDER BY `ord`", jobId).stream().map(this::buildJobEvent).collect(Collectors.toList());
+        try(PooledSQL sql = pool.get()) {
+            return SQLUtil.select(sql, table("job_events"), "`id`,`job_id`,`type`,`created_at`", "WHERE `job_id`=? ORDER BY `ord`", jobId).stream().map(this::buildJobEvent).collect(Collectors.toList());
+        }
     }
 
     public void createLogEntry(JobLogEntry entry) {
         entry.checkRequired();
         entry.sanitize();
-        SQLUtil.insert(sql, table("job_log_entries"), new MapBuilder<String, Object>()
-                .set("id", entry.getId())
-                .set("ord", System.currentTimeMillis())
-                .set("event_id", entry.getEventId())
-                .set("level", entry.getLevel())
-                .set("message", entry.getMessage())
-                .set("created_at", entry.getCreatedAt())
-                .build()
-        );
+        try(PooledSQL sql = pool.get()) {
+            SQLUtil.insert(sql, table("job_log_entries"), new MapBuilder<String, Object>()
+                    .set("id", entry.getId())
+                    .set("ord", System.currentTimeMillis())
+                    .set("event_id", entry.getEventId())
+                    .set("level", entry.getLevel())
+                    .set("message", entry.getMessage())
+                    .set("created_at", entry.getCreatedAt())
+                    .build()
+            );
+        }
     }
 
     public JobLogEntry getLogEntry(UUID eventId, UUID id) {
-        List<Map<String, Object>> results = SQLUtil.select(sql, table("job_log_entries"), "`id`,`event_id`,`level`,`message`,`created_at`", "WHERE `event_id`=? AND `id`=? LIMIT 1", eventId, id);
-        if(results.size() == 0)
-            return null;
-        return buildJobLogEntry(results.get(0));
+        try(PooledSQL sql = pool.get()) {
+            List<Map<String, Object>> results = SQLUtil.select(sql, table("job_log_entries"), "`id`,`event_id`,`level`,`message`,`created_at`", "WHERE `event_id`=? AND `id`=? LIMIT 1", eventId, id);
+            if(results.size() == 0)
+                return null;
+            return buildJobLogEntry(results.get(0));
+        }
     }
 
     public List<JobLogEntry> queryLogEntries(UUID eventId) {
-        return SQLUtil.select(sql, table("job_log_entries"), "`id`,`event_id`,`level`,`message`,`created_at`", "WHERE `event_id`=? ORDER BY `ord` ASC", eventId).stream().map(this::buildJobLogEntry).collect(Collectors.toList());
+        try(PooledSQL sql = pool.get()) {
+            return SQLUtil.select(sql, table("job_log_entries"), "`id`,`event_id`,`level`,`message`,`created_at`", "WHERE `event_id`=? ORDER BY `ord` ASC", eventId).stream().map(this::buildJobLogEntry).collect(Collectors.toList());
+        }
     }
 
     public void createWorker(JobWorkerInfo info) {
         info.checkRequired();
         info.sanitize();
-        SQLUtil.insert(sql, table("job_workers"), new MapBuilder<String, Object>()
-                .set("id", info.getId())
-                .set("ord", System.currentTimeMillis())
-                .set("queue", info.getQueue())
-                .set("threads", info.getThreads())
-                .set("online", info.isOnline())
-                .set("hostname", info.getHostname())
-                .set("last_heartbeat_at", info.getLastHeartbeatAt())
-                .set("created_at", info.getCreatedAt())
-                .build()
-        );
+        try(PooledSQL sql = pool.get()) {
+            SQLUtil.insert(sql, table("job_workers"), new MapBuilder<String, Object>()
+                    .set("id", info.getId())
+                    .set("ord", System.currentTimeMillis())
+                    .set("queue", info.getQueue())
+                    .set("threads", info.getThreads())
+                    .set("online", info.isOnline())
+                    .set("hostname", info.getHostname())
+                    .set("last_heartbeat_at", info.getLastHeartbeatAt())
+                    .set("created_at", info.getCreatedAt())
+                    .build()
+            );
+        }
     }
 
     public JobWorkerInfo getWorker(UUID id) {
-        List<Map<String, Object>> results = SQLUtil.select(sql, table("job_workers"), "`id`,`queue`,`hostname`,`threads`,`online`,`last_heartbeat_at`,`created_at`", "WHERE `id`=? LIMIT 1", id);
-        if(results.size() == 0)
-            return null;
-        return buildJobWorkerInfo(results.get(0));
+        try(PooledSQL sql = pool.get()) {
+            List<Map<String, Object>> results = SQLUtil.select(sql, table("job_workers"), "`id`,`queue`,`hostname`,`threads`,`online`,`last_heartbeat_at`,`created_at`", "WHERE `id`=? LIMIT 1", id);
+            if(results.size() == 0)
+                return null;
+            return buildJobWorkerInfo(results.get(0));
+        }
     }
 
     public List<JobWorkerInfo> queryWorkers() {
-        return SQLUtil.select(sql, table("job_workers"), "`id`,`queue`,`hostname`,`threads`,`online`,`last_heartbeat_at`,`created_at`", null).stream().map(this::buildJobWorkerInfo).collect(Collectors.toList());
+        try(PooledSQL sql = pool.get()) {
+            return SQLUtil.select(sql, table("job_workers"), "`id`,`queue`,`hostname`,`threads`,`online`,`last_heartbeat_at`,`created_at`", null).stream().map(this::buildJobWorkerInfo).collect(Collectors.toList());
+        }
     }
 
     public void markOfflineWorkers() {
-        SQLUtil.update(sql, table("job_workers"), new MapBuilder<String, Object>()
-                .set("online", false)
-                .build()
-                , "`online`=? AND `last_heartbeat_at`<=?", true, Date.from(Instant.now().minus(1, ChronoUnit.MINUTES)));
+        try(PooledSQL sql = pool.get()) {
+            SQLUtil.update(sql, table("job_workers"), new MapBuilder<String, Object>()
+                            .set("online", false)
+                            .build()
+                    , "`online`=? AND `last_heartbeat_at`<=?", true, Date.from(Instant.now().minus(1, ChronoUnit.MINUTES)));
+        }
     }
 
     public void deleteOfflineWorkers() {
-        SQLUtil.delete(sql, table("job_workers"), "`online`=? AND `last_heartbeat_at`<=?", false, Date.from(Instant.now().minus(1, ChronoUnit.MINUTES)));
+        try(PooledSQL sql = pool.get()) {
+            SQLUtil.delete(sql, table("job_workers"), "`online`=? AND `last_heartbeat_at`<=?", false, Date.from(Instant.now().minus(1, ChronoUnit.MINUTES)));
+        }
     }
 
     public void setWorkerOnline(UUID id, boolean online) {
-        SQLUtil.update(sql, table("job_workers"), new MapBuilder<String, Object>()
-                .set("online", online)
-                .set("last_heartbeat_at", Date.from(Instant.now()))
-                .build()
-        ,"`id`=?", id);
+        try(PooledSQL sql = pool.get()) {
+            SQLUtil.update(sql, table("job_workers"), new MapBuilder<String, Object>()
+                            .set("online", online)
+                            .set("last_heartbeat_at", Date.from(Instant.now()))
+                            .build()
+                    ,"`id`=?", id);
+        }
     }
 
     public void updateRecurringJob(UUID id, UUID newJobId, Date lastExecutionAt) {
-        SQLUtil.update(sql, table("recurring_jobs"), new MapBuilder<String, Object>()
-                .set("last_job_id", newJobId)
-                .set("last_execution_at", lastExecutionAt)
-                .build()
-        , "`id`=?", id);
+        try(PooledSQL sql = pool.get()) {
+            SQLUtil.update(sql, table("recurring_jobs"), new MapBuilder<String, Object>()
+                            .set("last_job_id", newJobId)
+                            .set("last_execution_at", lastExecutionAt)
+                            .build()
+                    , "`id`=?", id);
+        }
     }
 
     private JobInfo buildJobInfo(Map<String, Object> values) {

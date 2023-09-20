@@ -1,7 +1,7 @@
 package org.javawebstack.jobs.api.middleware;
 
-import org.javawebstack.httpserver.Exchange;
-import org.javawebstack.httpserver.handler.AfterRequestHandler;
+import org.javawebstack.http.router.Exchange;
+import org.javawebstack.http.router.handler.AfterRequestHandler;
 import org.javawebstack.jobs.api.response.Response;
 
 public class ResponseMiddleware implements AfterRequestHandler {

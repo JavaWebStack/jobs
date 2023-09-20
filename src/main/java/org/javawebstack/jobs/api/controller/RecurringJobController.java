@@ -1,21 +1,18 @@
 package org.javawebstack.jobs.api.controller;
 
-import org.javawebstack.abstractdata.AbstractElement;
 import org.javawebstack.abstractdata.AbstractObject;
-import org.javawebstack.httpserver.Exchange;
-import org.javawebstack.httpserver.router.annotation.PathPrefix;
-import org.javawebstack.httpserver.router.annotation.With;
-import org.javawebstack.httpserver.router.annotation.params.Body;
-import org.javawebstack.httpserver.router.annotation.params.Path;
-import org.javawebstack.httpserver.router.annotation.verbs.Delete;
-import org.javawebstack.httpserver.router.annotation.verbs.Get;
-import org.javawebstack.httpserver.router.annotation.verbs.Post;
-import org.javawebstack.jobs.JobStatus;
+
+import org.javawebstack.http.router.Exchange;
+import org.javawebstack.http.router.router.annotation.PathPrefix;
+import org.javawebstack.http.router.router.annotation.With;
+import org.javawebstack.http.router.router.annotation.params.Body;
+import org.javawebstack.http.router.router.annotation.params.Path;
+import org.javawebstack.http.router.router.annotation.verbs.Delete;
+import org.javawebstack.http.router.router.annotation.verbs.Get;
+import org.javawebstack.http.router.router.annotation.verbs.Post;
 import org.javawebstack.jobs.Jobs;
-import org.javawebstack.jobs.api.request.CreateJobRequest;
 import org.javawebstack.jobs.api.request.CreateRecurringJobRequest;
 import org.javawebstack.jobs.api.response.Response;
-import org.javawebstack.jobs.storage.model.JobInfo;
 import org.javawebstack.jobs.storage.model.RecurringJobInfo;
 import org.javawebstack.jobs.storage.model.RecurringJobQuery;
 
@@ -53,7 +50,7 @@ public class RecurringJobController extends Controller {
         RecurringJobInfo info = storage.getRecurringJob(id);
         if(info == null)
             return Response.error(404, "Recurring job not found");
-        AbstractObject res = exchange.getServer().getAbstractMapper().toAbstract(info).object();
+        AbstractObject res = exchange.getRouter().getMapper().map(info).object();
         return Response.success().setData(res);
     }
 

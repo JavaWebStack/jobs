@@ -2,28 +2,27 @@ package org.javawebstack.jobs.scheduler.sql;
 
 import org.javawebstack.jobs.scheduler.JobScheduler;
 import org.javawebstack.jobs.scheduler.JobSchedulerTest;
-import org.javawebstack.jobs.scheduler.sql.SQLJobScheduler;
 import org.javawebstack.jobs.test.TestProperties;
 import org.javawebstack.jobs.test.TestUtil;
 import org.javawebstack.jobs.test.precondition.SQLDatabaseAvailable;
-import org.javawebstack.orm.wrapper.SQL;
+import org.javawebstack.orm.connection.pool.SQLPool;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 @ExtendWith(SQLDatabaseAvailable.class)
 public class SQLJobSchedulerTest extends JobSchedulerTest {
 
-    private SQL sql;
+    private SQLPool pool;
 
     protected JobScheduler initScheduler() {
-        sql = TestProperties.createSQLDatabaseConnection();
-        TestUtil.purgeSchedulerDatabase(sql);
-        return new SQLJobScheduler(sql, null);
+        pool = TestProperties.createSQLDatabaseConnection();
+        TestUtil.purgeSchedulerDatabase(pool);
+        return new SQLJobScheduler(pool, null);
     }
 
     @AfterAll
     public void cleanup() {
-        TestUtil.purgeSchedulerDatabase(sql);
+        TestUtil.purgeSchedulerDatabase(pool);
     }
 
 }

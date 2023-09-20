@@ -1,6 +1,7 @@
 package org.javawebstack.jobs.storage.model;
 
-import org.javawebstack.httpserver.Exchange;
+
+import org.javawebstack.http.router.Exchange;
 
 public abstract class PaginationQuery<T extends PaginationQuery<T>> {
 

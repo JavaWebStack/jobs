@@ -1,18 +1,19 @@
 package org.javawebstack.jobs.test;
 
-import org.javawebstack.orm.wrapper.SQL;
+import org.javawebstack.orm.connection.pool.PooledSQL;
+import org.javawebstack.orm.connection.pool.SQLPool;
 
 import java.sql.SQLException;
 
 public class TestUtil {
 
-    public static void purgeDatabase(SQL sql) {
-        purgeStorageDatabase(sql);
-        purgeSchedulerDatabase(sql);
+    public static void purgeDatabase(SQLPool pool) {
+        purgeStorageDatabase(pool);
+        purgeSchedulerDatabase(pool);
     }
 
-    public static void purgeStorageDatabase(SQL sql) {
-        try {
+    public static void purgeStorageDatabase(SQLPool pool) {
+        try(PooledSQL sql = pool.get()) {
             String[] TABLES = {
                     "jobs",
                     "job_events",
@@ -27,8 +28,8 @@ public class TestUtil {
         }
     }
 
-    public static void purgeSchedulerDatabase(SQL sql) {
-        try {
+    public static void purgeSchedulerDatabase(SQLPool pool) {
+        try(PooledSQL sql = pool.get()) {
             String[] TABLES = {
                     "scheduled_jobs",
                     "queued_jobs"

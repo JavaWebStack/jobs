@@ -1,12 +1,12 @@
 package org.javawebstack.jobs.test;
 
-import org.javawebstack.orm.wrapper.MySQL;
-import org.javawebstack.orm.wrapper.SQL;
+import org.javawebstack.orm.connection.MySQL;
+import org.javawebstack.orm.connection.pool.MinMaxScaler;
+import org.javawebstack.orm.connection.pool.SQLPool;
 
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
-import java.sql.SQLException;
 import java.util.Properties;
 
 public class TestProperties {
@@ -33,14 +33,14 @@ public class TestProperties {
         return properties.containsKey("database.mysql.host");
     }
 
-    public static SQL createSQLDatabaseConnection() {
-        return new MySQL(
+    public static SQLPool createSQLDatabaseConnection() {
+        return new SQLPool(new MinMaxScaler(1,1), () -> new MySQL(
                 properties.getProperty("database.mysql.host"),
                 Integer.parseInt(properties.getProperty("database.mysql.port", "3306")),
                 properties.getProperty("database.mysql.name", "jobs"),
                 properties.getProperty("database.mysql.username", "jobs"),
                 properties.getProperty("database.mysql.password", "")
-        );
+        ));
     }
 
 }

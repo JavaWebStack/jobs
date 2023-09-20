@@ -9,7 +9,9 @@ import org.javawebstack.jobs.serialization.JsonJobSerializer;
 import org.javawebstack.jobs.storage.JobStorage;
 import org.javawebstack.jobs.storage.inmemory.InMemoryJobStorage;
 import org.javawebstack.jobs.storage.sql.SQLJobStorage;
-import org.javawebstack.orm.wrapper.MySQL;
+import org.javawebstack.orm.connection.MySQL;
+import org.javawebstack.orm.connection.pool.MinMaxScaler;
+import org.javawebstack.orm.connection.pool.SQLPool;
 
 import java.util.HashMap;
 import java.util.Locale;
@@ -82,14 +84,14 @@ public class StandaloneOptions {
         }
     }
 
-    private MySQL getMySQL() {
-        return new MySQL(
+    private SQLPool getMySQL() {
+        return new SQLPool(new MinMaxScaler(1,1), () -> new MySQL(
                 get("db.host", "127.0.0.1"),
                 getInt("db.port", 3306),
                 get("db.name", "jobs"),
                 get("db.username", "jobs"),
                 get("db.password", "")
-        );
+        ));
     }
 
     public JobSerializer getSerializer() {

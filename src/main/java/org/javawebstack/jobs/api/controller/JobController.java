@@ -2,14 +2,14 @@ package org.javawebstack.jobs.api.controller;
 
 import org.javawebstack.abstractdata.AbstractElement;
 import org.javawebstack.abstractdata.AbstractObject;
-import org.javawebstack.httpserver.Exchange;
-import org.javawebstack.httpserver.router.annotation.PathPrefix;
-import org.javawebstack.httpserver.router.annotation.With;
-import org.javawebstack.httpserver.router.annotation.params.Body;
-import org.javawebstack.httpserver.router.annotation.params.Path;
-import org.javawebstack.httpserver.router.annotation.verbs.Delete;
-import org.javawebstack.httpserver.router.annotation.verbs.Get;
-import org.javawebstack.httpserver.router.annotation.verbs.Post;
+import org.javawebstack.http.router.Exchange;
+import org.javawebstack.http.router.router.annotation.PathPrefix;
+import org.javawebstack.http.router.router.annotation.With;
+import org.javawebstack.http.router.router.annotation.params.Body;
+import org.javawebstack.http.router.router.annotation.params.Path;
+import org.javawebstack.http.router.router.annotation.verbs.Delete;
+import org.javawebstack.http.router.router.annotation.verbs.Get;
+import org.javawebstack.http.router.router.annotation.verbs.Post;
 import org.javawebstack.jobs.JobStatus;
 import org.javawebstack.jobs.Jobs;
 import org.javawebstack.jobs.api.request.CreateJobRequest;
@@ -73,7 +73,7 @@ public class JobController extends Controller {
         JobInfo info = storage.getJob(id);
         if(info == null)
             return Response.error(404, "Job not found");
-        AbstractObject res = exchange.getServer().getAbstractMapper().toAbstract(info).object();
+        AbstractObject res = exchange.getRouter().getMapper().map(info).object();
         if(exchange.getQueryParameters().has("payload") && (exchange.query("payload").length() == 0 || exchange.query("payload").equals("true")))
             res.set("payload", AbstractElement.fromJson(storage.getJobPayload(info.getId())));
         return Response.success().setData(res);

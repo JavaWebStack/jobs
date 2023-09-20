@@ -1,8 +1,8 @@
 package org.javawebstack.jobs.api.middleware;
 
 import lombok.AllArgsConstructor;
-import org.javawebstack.httpserver.Exchange;
-import org.javawebstack.httpserver.handler.RequestHandler;
+import org.javawebstack.http.router.Exchange;
+import org.javawebstack.http.router.handler.RequestHandler;
 import org.javawebstack.jobs.api.JobApi;
 import org.javawebstack.jobs.api.response.Response;
 

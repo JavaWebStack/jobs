@@ -1,7 +1,7 @@
 package org.javawebstack.jobs.util;
 
 import org.javawebstack.abstractdata.AbstractElement;
-import org.javawebstack.orm.wrapper.SQL;
+import org.javawebstack.orm.connection.SQL;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;

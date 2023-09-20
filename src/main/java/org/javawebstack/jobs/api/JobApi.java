@@ -1,9 +1,10 @@
 package org.javawebstack.jobs.api;
 
 import lombok.Getter;
-import org.javawebstack.httpserver.HTTPMethod;
-import org.javawebstack.httpserver.HTTPServer;
-import org.javawebstack.httpserver.transformer.response.JsonResponseTransformer;
+import org.javawebstack.http.router.HTTPMethod;
+import org.javawebstack.http.router.HTTPRouter;
+import org.javawebstack.http.router.transformer.response.JsonResponseTransformer;
+import org.javawebstack.http.router.undertow.UndertowHTTPSocketServer;
 import org.javawebstack.jobs.Jobs;
 import org.javawebstack.jobs.api.auth.AuthProvider;
 import org.javawebstack.jobs.api.controller.*;
@@ -41,13 +42,13 @@ public class JobApi {
         return this;
     }
 
-    public HTTPServer start(int port) {
-        HTTPServer server = new HTTPServer()
+    public HTTPRouter start(int port) {
+        HTTPRouter router = new HTTPRouter(new UndertowHTTPSocketServer())
                 .responseTransformer(new JsonResponseTransformer().ignoreStrings())
                 .port(port);
-        install(server, null);
-        server.start();
-        server.beforeInterceptor(ex -> {
+        install(router, null);
+        router.start();
+        router.beforeInterceptor(ex -> {
             ex.header("Access-Control-Allow-Origin", "*");
             ex.header("Access-Control-Allow-Methods", "*");
             ex.header("Access-Control-Allow-Headers", "*");
@@ -57,15 +58,15 @@ public class JobApi {
             }
             return false;
         });
-        return server;
+        return router;
     }
 
-    public JobApi install(HTTPServer server, String prefix) {
+    public JobApi install(HTTPRouter router, String prefix) {
         if(prefix == null)
             prefix = "";
         if(prefix.length() > 0 && enableDashboard)
             throw new IllegalArgumentException("Prefix can not be set when the dashboard is enabled!");
-        server
+        router
                 .exceptionHandler(new ErrorController())
                 .controller(prefix, new JobController(jobs))
                 .controller(prefix, new RecurringJobController(jobs))
@@ -74,13 +75,13 @@ public class JobApi {
                 .afterAny(prefix + "{*:path}", new ResponseMiddleware())
                 .middleware("jobs_auth", new AuthMiddleware(this));
         if(enableDashboard) {
-            server.get("/", ex -> {
+            router.get("/", ex -> {
                 ex.redirect("/overview");
                 return "";
             });
-            server.staticResourceDirectory(prefix, JobApi.class.getClassLoader(), "dashboard");
+            router.staticResourceDirectory(prefix, JobApi.class.getClassLoader(), "dashboard");
             String html = loadHtml();
-            server.get(prefix + "{*:path}", ex -> html);
+            router.get(prefix + "{*:path}", ex -> html);
         }
         // TODO install dashboard
         return this;

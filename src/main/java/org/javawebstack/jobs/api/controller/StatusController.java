@@ -1,8 +1,8 @@
 package org.javawebstack.jobs.api.controller;
 
-import org.javawebstack.httpserver.router.annotation.PathPrefix;
-import org.javawebstack.httpserver.router.annotation.With;
-import org.javawebstack.httpserver.router.annotation.verbs.Get;
+import org.javawebstack.http.router.router.annotation.PathPrefix;
+import org.javawebstack.http.router.router.annotation.With;
+import org.javawebstack.http.router.router.annotation.verbs.Get;
 import org.javawebstack.jobs.Job;
 import org.javawebstack.jobs.Jobs;
 import org.javawebstack.jobs.api.response.Response;
